@@ -1,0 +1,186 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
+import { StateChip } from "@/components/state/StateChip";
+import { mockTickets, mockAgentRuns } from "@/mock/tickets";
+import { mockRepos } from "@/mock/integrations";
+import { formatRelative } from "@/lib/format";
+import type { TicketRow } from "@/types/db";
+import type { TicketState } from "@/components/state/types";
+import styles from "./TicketsBoardScreen.module.css";
+
+const NOW = new Date("2026-08-02T14:10:00Z");
+
+type FilterKey = "all" | "action" | "running" | "review" | "done";
+
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "action", label: "Needs action" },
+  { key: "running", label: "Agent running" },
+  { key: "review", label: "In review" },
+  { key: "done", label: "Done" },
+];
+
+const ACTION_STATES: TicketState[] = ["needs_human", "awaiting_plan_approval", "review", "changes_requested"];
+const RUNNING_STATES: TicketState[] = ["executing", "agent_running"];
+
+function matchesFilter(t: TicketRow, key: FilterKey): boolean {
+  if (key === "all") return true;
+  if (key === "review") return t.state === "review";
+  if (key === "done") return t.state === "done";
+  if (key === "running") return RUNNING_STATES.includes(t.state);
+  return ACTION_STATES.includes(t.state);
+}
+
+function accentFor(state: TicketState): "risk" | "predict" | null {
+  if (state === "needs_human") return "risk";
+  if (ACTION_STATES.includes(state)) return "predict";
+  return null;
+}
+
+function actionFor(state: TicketState): { label: string; variant: "primary" | "ghost" } {
+  switch (state) {
+    case "needs_human":
+      return { label: "Reassign", variant: "ghost" };
+    case "awaiting_plan_approval":
+      return { label: "Review plan", variant: "primary" };
+    case "review":
+      return { label: "Review PR", variant: "primary" };
+    case "done":
+      return { label: "View", variant: "ghost" };
+    case "backlog":
+    case "in_progress":
+      return { label: "Assign agent", variant: "ghost" };
+    default:
+      return { label: "View log", variant: "ghost" };
+  }
+}
+
+export function TicketsBoardScreen() {
+  const router = useRouter();
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
+  const [search, setSearch] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2400);
+  }
+
+  const needsActionCount = mockTickets.filter((t) => ACTION_STATES.includes(t.state)).length;
+
+  const visibleTickets = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return mockTickets
+      .filter((t) => matchesFilter(t, activeFilter))
+      .filter((t) => !q || t.title.toLowerCase().includes(q));
+  }, [activeFilter, search]);
+
+  return (
+    <div>
+      <PageHeader
+        title="Tickets"
+        action={
+          <Button variant="primary" onClick={() => showToast("New ticket: coming soon.")}>
+            New ticket
+          </Button>
+        }
+      />
+
+      <div className={styles.toolbar}>
+        <div className={styles.filterRow}>
+          {FILTERS.map((f) => {
+            const active = activeFilter === f.key;
+            return (
+              <div
+                key={f.key}
+                className={[styles.pill, active && (f.key === "action" ? styles.pillAmberActive : styles.pillActive)]
+                  .filter(Boolean)
+                  .join(" ")}
+                onClick={() => setActiveFilter(f.key)}
+              >
+                {f.label}
+                {f.key === "action" && (
+                  <span className={[styles.pillBadge, active && styles.pillBadgeActive].filter(Boolean).join(" ")}>
+                    {needsActionCount}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+          <div className={styles.spacer} />
+          <div className={styles.repoDropdown} onClick={() => showToast("Repo filter: only one repo connected.")}>
+            All repos <span style={{ fontSize: 10, color: "var(--ink-3)" }}>▾</span>
+          </div>
+          <input
+            className={styles.searchInput}
+            placeholder="Search tickets…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className={styles.body}>
+        <div className={styles.table}>
+          <div className={styles.headRow}>
+            <span>Ticket</span>
+            <span>Repo</span>
+            <span>State</span>
+            <span>Agent runs</span>
+            <span>Updated</span>
+            <span />
+          </div>
+
+          {visibleTickets.length === 0 ? (
+            <div className={styles.empty}>No tickets match this filter.</div>
+          ) : (
+            visibleTickets.map((t) => {
+              const accent = accentFor(t.state);
+              const action = actionFor(t.state);
+              const runs = mockAgentRuns.filter((r) => r.ticket_id === t.id).length;
+              const repo = mockRepos.find((r) => r.id === t.repo_id)?.full_name ?? "–";
+              return (
+                <div key={t.id} className={styles.row} onClick={() => router.push(`/tickets/${t.id}`)}>
+                  {accent && <div className={[styles.accent, accent === "risk" ? styles.accentRisk : styles.accentPredict].join(" ")} />}
+                  <span className={styles.title}>{t.title}</span>
+                  <span className={styles.repo}>{repo}</span>
+                  <span className={styles.stateCell}>
+                    <StateChip state={t.state} />
+                    {t.state === "changes_requested" && (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--predict)" strokeWidth="2">
+                        <path d="M4 4v5h5M20 20v-5h-5" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M5 15a8 8 0 0 0 14 3l1-3M19 9A8 8 0 0 0 5 6L4 9" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className={styles.runs}>
+                    {runs} run{runs === 1 ? "" : "s"}
+                  </span>
+                  <span className={styles.updated}>{formatRelative(t.updated_at, NOW)}</span>
+                  <span className={styles.actionCell}>
+                    <Button
+                      variant={action.variant}
+                      style={{ height: 32, padding: "0 12px", fontSize: 13 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/tickets/${t.id}`);
+                      }}
+                    >
+                      {action.label}
+                    </Button>
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {toast && <div className={styles.toast}>{toast}</div>}
+    </div>
+  );
+}

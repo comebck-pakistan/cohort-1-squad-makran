@@ -1,0 +1,206 @@
+.header {
+  padding: 28px 40px 0;
+}
+
+.breadcrumb {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 24px;
+  color: var(--ink);
+}
+
+.body {
+  padding: 24px 40px 48px;
+  max-width: 1280px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.85fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 12px;
+}
+
+.verdictRow {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.factLine {
+  font-size: 14px;
+  color: var(--ink-2);
+  margin-bottom: 8px;
+}
+
+.cacheNote {
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.refreshLink {
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--signal);
+  font-size: 12px;
+  padding: 0;
+}
+
+.divider {
+  border-top: 1px solid var(--border);
+  margin: 18px 0;
+}
+
+.priceNote {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 6px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.sectionTitle {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 19px;
+  color: var(--ink);
+}
+
+.viewAll {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.tableCard {
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.tableHead {
+  display: grid;
+  padding: 0 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.tableRow {
+  display: grid;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.tableRow:last-child {
+  border-bottom: none;
+}
+
+.sidebarNote {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-bottom: 12px;
+}
+
+.contactRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.contactRow:last-child {
+  border-bottom: none;
+}
+
+.contactInfo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.contactName {
+  font-size: 13px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contactEmail {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.addContactLink {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  margin-top: 10px;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.removeLink {
+  font-size: 12px;
+  color: var(--risk);
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  background: none;
+  border: none;
+}
+
+.statList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.statRow {
+  display: flex;
+  justify-content: space-between;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.statValue {
+  font-size: 13px;
+  color: var(--ink);
+}

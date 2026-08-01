@@ -1,0 +1,32 @@
+.wrap {
+  padding: 28px 40px 0;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 24px;
+  color: var(--ink);
+  margin-bottom: 18px;
+}
+
+.tabRow {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  padding-bottom: 12px;
+  font-size: 14px;
+  color: var(--ink-3);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+
+.tabActive {
+  font-weight: 600;
+  color: var(--ink);
+  border-bottom-color: var(--signal);
+}

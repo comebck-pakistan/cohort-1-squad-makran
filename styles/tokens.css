@@ -1,0 +1,73 @@
+/**
+ * Design tokens, ported verbatim from web-designs/_ds/.../tokens/*.css
+ * (the approved Claude Design export). Do not hand-edit values here without
+ * updating the source design system first: this file must stay a mirror.
+ * Font-family tokens are set on :root by next/font in app/layout.tsx instead
+ * of via @import, so only size/line-height tokens live here.
+ */
+:root {
+  /* colors.css */
+  --base: #F4F6F9;
+  --panel: #FFFFFF;
+  --panel-2: #FBFCFD;
+  --border: #E2E7EE;
+  --border-strong: #CED5DF;
+  --ink: #141A22;
+  --ink-2: #3E4A59;
+  --ink-3: #6B7787;
+  --ink-4: #9AA5B2;
+
+  --signal: #3A43E4;
+  --signal-ink: #2A31B8;
+  --signal-tint: #ECEDFC;
+  --verified: #17835A;
+  --verified-tint: #E4F3EC;
+  --risk: #C23A3F;
+  --risk-tint: #F8E7E7;
+  --predict: #B26A0A;
+  --predict-tint: #FBEFDB;
+
+  --console-bg: #12161D;
+  --console-panel: #1A1F28;
+  --console-border: #262D38;
+  --console-text: #C6D0DC;
+  --console-dim: #7C8794;
+  --console-signal: #8A93FF;
+  --console-ok: #6BE0B0;
+
+  /* typography.css (size/line-height only, families come from next/font) */
+  --text-display-xl-size: 40px; --text-display-xl-lh: 44px;
+  --text-display-l-size: 30px;  --text-display-l-lh: 36px;
+  --text-h1-size: 24px;         --text-h1-lh: 30px;
+  --text-h2-size: 19px;         --text-h2-lh: 26px;
+  --text-h3-size: 16px;         --text-h3-lh: 22px;
+  --text-body-size: 14px;       --text-body-lh: 22px;
+  --text-small-size: 13px;      --text-small-lh: 20px;
+  --text-caption-size: 12px;    --text-caption-lh: 16px;
+  --text-mono-data-size: 13px;  --text-mono-data-lh: 20px;
+  --text-mono-log-size: 12.5px; --text-mono-log-lh: 20px;
+
+  /* spacing.css */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-7: 32px; --space-8: 40px; --space-9: 48px; --space-10: 64px;
+  --card-padding: 20px;
+  --section-gap: 28px;
+
+  /* radius.css */
+  --r-sm: 6px; --r-md: 8px; --r-lg: 10px; --r-xl: 12px; --r-pill: 999px;
+
+  /* shadows.css */
+  --shadow-sm: 0 1px 2px rgba(20, 26, 34, .06);
+  --shadow-pop: 0 8px 28px rgba(20, 26, 34, .14);
+}
+
+@keyframes dc-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes dc-pulse {
+    0%, 100% { opacity: 1; }
+  }
+}

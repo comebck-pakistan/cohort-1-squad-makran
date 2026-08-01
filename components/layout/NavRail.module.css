@@ -1,0 +1,43 @@
+.rail {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 12px;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--ink);
+  padding: 0 12px 20px;
+}
+
+.item {
+  display: block;
+  padding: 9px 12px;
+  border-radius: var(--r-pill);
+  margin-bottom: 2px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.item:hover {
+  background: var(--panel-2);
+  text-decoration: none;
+}
+
+.active {
+  color: var(--signal);
+  background: var(--signal-tint);
+}
+
+.active:hover {
+  background: var(--signal-tint);
+}

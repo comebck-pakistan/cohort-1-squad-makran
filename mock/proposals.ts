@@ -1,0 +1,68 @@
+import type { ProposalRow } from "@/types/db";
+
+export const mockProposals: ProposalRow[] = [
+  {
+    id: "prop_1",
+    owner_id: "owner_1",
+    client_id: "client_acme",
+    title: "Shopify checkout rebuild",
+    state: "sent",
+    in_voice: true,
+    body: "Hi Priya, I've rebuilt checkout flows for three Shopify Plus stores in the last year...",
+    sent_at: "2026-07-31T10:00:00Z",
+    outcome_reason: null,
+    created_at: "2026-07-31T09:30:00Z",
+  },
+  {
+    id: "prop_2",
+    owner_id: "owner_1",
+    client_id: "client_vertex",
+    title: "API integration project",
+    state: "won",
+    in_voice: true,
+    body: "Hi team, your Stripe + internal ledger sync sounds like a great fit...",
+    sent_at: "2026-07-26T10:00:00Z",
+    outcome_reason: "Selected on merit",
+    created_at: "2026-07-26T09:00:00Z",
+  },
+  {
+    id: "prop_3",
+    owner_id: "owner_1",
+    client_id: "client_thorn",
+    title: "Mobile app redesign",
+    state: "lost",
+    in_voice: true,
+    body: "Hi Thorn team, I'd love to help bring the new mobile flows to life...",
+    sent_at: "2026-07-19T10:00:00Z",
+    outcome_reason: "Price too high",
+    created_at: "2026-07-19T09:00:00Z",
+  },
+  {
+    id: "prop_4",
+    owner_id: "owner_1",
+    client_id: "client_bramblewood",
+    title: "Dashboard CSV export + filters",
+    state: "draft",
+    in_voice: false,
+    body: "Survey-fallback draft: not enough past-proposal history to draft in your voice yet.",
+    sent_at: null,
+    outcome_reason: null,
+    created_at: "2026-08-01T12:00:00Z",
+  },
+  {
+    id: "prop_5",
+    owner_id: "owner_1",
+    client_id: "client_northwind",
+    title: "Backend engineer, 3mo contract",
+    state: "draft",
+    in_voice: true,
+    body: "Hi Marcus, 3 months of backend work sounds like a great fit given my recent Node/Postgres projects...",
+    sent_at: null,
+    outcome_reason: null,
+    created_at: "2026-08-01T15:20:00Z",
+  },
+];
+
+export function getProposalById(id: string): ProposalRow | undefined {
+  return mockProposals.find((p) => p.id === id);
+}

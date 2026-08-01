@@ -1,0 +1,222 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 26, 34, .45);
+  z-index: 10;
+}
+
+.wrap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 11;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.modal {
+  width: 480px;
+  max-width: 100%;
+  background: var(--panel);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-pop);
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.title {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 19px;
+  margin-bottom: 4px;
+}
+
+.titleWon {
+  color: var(--verified);
+}
+
+.titleLost {
+  color: var(--risk);
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.close {
+  cursor: pointer;
+  color: var(--ink-3);
+  font-size: 18px;
+  line-height: 1;
+  background: none;
+  border: none;
+}
+
+.field {
+  margin-bottom: 18px;
+}
+
+.fieldLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.required {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--risk);
+}
+
+.optional {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.dropdownWrap {
+  position: relative;
+}
+
+.dropdownTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 0 12px;
+  cursor: pointer;
+  background: var(--panel);
+  width: 100%;
+}
+
+.dropdownValue {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.dropdownCaret {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 44px;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-pop);
+  z-index: 5;
+}
+
+.dropdownOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--ink);
+  border-bottom: 1px solid var(--border);
+  width: 100%;
+  text-align: left;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  cursor: pointer;
+}
+
+.dropdownOption:hover {
+  background: var(--panel-2);
+}
+
+.checkWon {
+  color: var(--verified);
+}
+
+.checkLost {
+  color: var(--risk);
+}
+
+.textarea {
+  width: 100%;
+  height: 72px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  box-sizing: border-box;
+  resize: vertical;
+  outline: none;
+}
+
+.textarea:focus {
+  border-color: var(--signal);
+}
+
+.fieldHint {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 6px;
+}
+
+.plainInput {
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 0 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  box-sizing: border-box;
+  outline: none;
+}
+
+.plainInput:focus {
+  border-color: var(--signal);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.confirmBtn {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--r-md);
+  border: none;
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.confirmBtnWon {
+  background: var(--verified);
+}
+
+.confirmBtnLost {
+  background: var(--risk);
+}

@@ -1,0 +1,230 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 26, 34, .45);
+  z-index: 10;
+}
+
+.wrap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 11;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.modal {
+  width: 560px;
+  max-width: 100%;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  background: var(--panel);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-pop);
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.title {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 19px;
+  color: var(--ink);
+}
+
+.close {
+  cursor: pointer;
+  color: var(--ink-3);
+  font-size: 18px;
+  line-height: 1;
+  background: none;
+  border: none;
+}
+
+.field {
+  margin-bottom: 20px;
+}
+
+.fieldLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.fieldOptional {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.fieldHint {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 6px;
+}
+
+.fieldError {
+  font-size: 12px;
+  color: var(--risk);
+  margin-top: 6px;
+}
+
+.searchWrap {
+  position: relative;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 13px;
+}
+
+.searchInput {
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 0 12px 0 34px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  box-sizing: border-box;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: var(--signal);
+}
+
+.addClientLink {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  margin-top: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.whenGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.plainInput {
+  height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 0 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  box-sizing: border-box;
+  outline: none;
+}
+
+.plainInput:focus {
+  border-color: var(--signal);
+}
+
+.joinNowBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  border: 1px solid var(--signal);
+  background: var(--signal-tint);
+  border-radius: var(--r-md);
+  padding: 0 12px;
+}
+
+.joinNowLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--signal);
+  font-weight: 500;
+}
+
+.joinNowDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--signal);
+  animation: dc-pulse 1.4s ease-in-out infinite;
+}
+
+.useScheduledLink {
+  font-size: 12px;
+  color: var(--signal);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.joinNowToggle {
+  margin-top: 10px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.joinNowToggleDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--signal);
+  display: inline-block;
+}
+
+.textarea {
+  width: 100%;
+  height: 80px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  box-sizing: border-box;
+  resize: vertical;
+  outline: none;
+}
+
+.textarea:focus {
+  border-color: var(--signal);
+}
+
+.notice {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px;
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

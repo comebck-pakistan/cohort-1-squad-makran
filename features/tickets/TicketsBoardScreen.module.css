@@ -1,0 +1,195 @@
+.toolbar {
+  padding: 20px 40px 0;
+}
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.pill {
+  font-family: var(--font-body);
+  font-size: 13px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  color: var(--ink-2);
+}
+
+.pillActive {
+  background: var(--signal);
+  color: #fff;
+  border-color: var(--signal);
+}
+
+.pillAmberActive {
+  background: var(--predict-tint);
+  color: var(--predict);
+  border-color: var(--predict-tint);
+}
+
+.pillBadge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--predict);
+  color: #fff;
+  border-radius: var(--r-pill);
+  padding: 1px 6px;
+}
+
+.pillBadgeActive {
+  background: rgba(255, 255, 255, .35);
+  color: var(--predict);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.repoDropdown {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  background: var(--panel);
+}
+
+.searchInput {
+  height: 40px;
+  width: 220px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--ink);
+  box-sizing: border-box;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: var(--signal);
+}
+
+.body {
+  padding: 0 40px 48px;
+  max-width: 1280px;
+}
+
+.table {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow-x: auto;
+}
+
+.headRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) minmax(140px, 1fr) 150px 80px 90px 110px;
+  min-width: 900px;
+  padding: 10px 18px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) minmax(140px, 1fr) 150px 80px 90px 110px;
+  min-width: 900px;
+  align-items: center;
+  padding: 15px 18px 15px 22px;
+  border-bottom: 1px solid var(--border);
+  min-height: 22px;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+
+.accentRisk {
+  background: var(--risk);
+}
+
+.accentPredict {
+  background: var(--predict);
+}
+
+.title {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.repo {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.stateCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.runs {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.updated {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.actionCell {
+  text-align: right;
+}
+
+.empty {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 14px;
+}
+
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: var(--r-md);
+  font-size: 14px;
+  box-shadow: var(--shadow-pop);
+  z-index: 20;
+}

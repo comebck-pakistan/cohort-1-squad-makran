@@ -1,0 +1,26 @@
+.select {
+  height: 40px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-strong);
+  padding: 0 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--panel);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.required {
+  border-color: var(--signal);
+}
+
+.select:focus {
+  outline: 2px solid var(--signal-tint);
+  outline-offset: 2px;
+}
+
+.select:disabled {
+  background: var(--panel-2);
+  cursor: not-allowed;
+}
