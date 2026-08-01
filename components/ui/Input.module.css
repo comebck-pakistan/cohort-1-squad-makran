@@ -1,0 +1,28 @@
+.input {
+  height: 40px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-strong);
+  padding: 0 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--panel);
+  outline: none;
+  outline-offset: 2px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  border-color: var(--signal);
+  outline: 2px solid var(--signal-tint);
+}
+
+.input:disabled {
+  background: var(--panel-2);
+  cursor: not-allowed;
+}
+
+.input::placeholder {
+  color: var(--ink-4);
+}

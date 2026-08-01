@@ -1,0 +1,15 @@
+.button {
+  background: var(--console-panel);
+  border: 1px solid var(--console-border);
+  color: var(--console-text);
+  border-radius: var(--r-md);
+  height: 32px;
+  padding: 0 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.button:hover {
+  border-color: var(--console-signal);
+}

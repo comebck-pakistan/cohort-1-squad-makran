@@ -1,0 +1,468 @@
+.page {
+  background: var(--base);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.navRight {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.navLink {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.hero {
+  text-align: center;
+  padding: 96px 40px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.heroEyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 20px;
+}
+
+.heroLine {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.heroLineSignal {
+  color: var(--signal);
+}
+
+.heroBody {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 560px;
+  margin: 16px auto 0;
+}
+
+.heroActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.heroNote {
+  font-size: 12px;
+  color: var(--ink-4);
+  margin-top: 16px;
+}
+
+.strip {
+  background: var(--panel-2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+.stripInner {
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.stripItem {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border-right: 1px solid var(--border);
+}
+
+.stripItem:last-child {
+  border-right: none;
+}
+
+.section {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 80px 40px;
+}
+
+.sectionTitle {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 28px;
+  color: var(--ink);
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.howGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.stepEyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 10px;
+}
+
+.stepTitle {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.stepBody {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.stepBodyMb {
+  margin-bottom: 14px;
+}
+
+.chipRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chipArrow {
+  color: var(--ink-4);
+  font-size: 12px;
+}
+
+.honestSection {
+  background: var(--panel-2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 64px 0;
+}
+
+.honestInner {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 40px;
+  text-align: center;
+}
+
+.honestTitle {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 28px;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.honestBody {
+  font-size: 15px;
+  color: var(--ink-2);
+  margin-bottom: 32px;
+}
+
+.honestGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  text-align: left;
+}
+
+.factCard {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+}
+
+.factHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.factMarkerVerified {
+  color: var(--verified);
+  font-size: 14px;
+}
+
+.factValueInk {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.factCaption {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.predictionCard {
+  background: var(--predict-tint);
+  border: 1px dashed var(--predict);
+  border-radius: var(--r-lg);
+  padding: 20px;
+}
+
+.factMarkerPredict {
+  color: var(--predict);
+  font-size: 14px;
+}
+
+.factValuePredict {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--predict);
+}
+
+.syntheticCard {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  background-image: repeating-linear-gradient(45deg, var(--border) 0, var(--border) 1px, transparent 1px, transparent 8px);
+}
+
+.syntheticPill {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-3);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 2px 7px;
+}
+
+.syntheticCaption {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 18px;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+.featureGridMb {
+  margin-bottom: 80px;
+}
+
+.featureTitle {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 26px;
+  color: var(--ink);
+  margin-bottom: 14px;
+}
+
+.featureBody {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink-2);
+}
+
+.meetingCard {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px 20px 20px 22px;
+}
+
+.meetingBar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--signal);
+  border-radius: var(--r-lg) 0 0 var(--r-lg);
+}
+
+.meetingTitle {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.meetingNote {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-bottom: 12px;
+}
+
+.meetingStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meetingDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--signal);
+  animation: dc-pulse 1.4s ease-in-out infinite;
+}
+
+.meetingStatusLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--signal);
+}
+
+.consoleBox {
+  background: var(--console-bg);
+  border-radius: var(--r-xl);
+  padding: 18px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 20px;
+}
+
+.consoleLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.consoleOk {
+  color: var(--console-ok);
+}
+
+.consoleActive {
+  color: var(--console-signal);
+}
+
+.consoleDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--console-signal);
+  animation: dc-pulse 1.4s ease-in-out infinite;
+  display: inline-block;
+}
+
+.ctaSection {
+  background: var(--ink);
+  padding: 80px 40px;
+  text-align: center;
+}
+
+.ctaTitle {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 28px;
+  color: #fff;
+  margin-bottom: 10px;
+  max-width: 620px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ctaBody {
+  font-size: 15px;
+  color: var(--ink-3);
+  margin-bottom: 24px;
+}
+
+.ctaNote {
+  font-size: 12px;
+  color: var(--ink-4);
+  margin-top: 16px;
+}
+
+.footer {
+  background: var(--ink);
+  border-top: 1px solid var(--console-border);
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+}
+
+.footerBrand {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 15px;
+  color: #fff;
+}
+
+.footerLinks {
+  display: flex;
+  gap: 20px;
+}
+
+.footerLink {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: var(--r-md);
+  font-size: 14px;
+  box-shadow: var(--shadow-pop);
+  z-index: 20;
+}

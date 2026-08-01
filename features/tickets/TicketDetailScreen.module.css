@@ -1,0 +1,322 @@
+.header {
+  padding: 28px 40px 0;
+}
+
+.breadcrumb {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 24px;
+  color: var(--ink);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-3);
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.bannerWrap {
+  padding: 20px 40px 0;
+}
+
+.banner {
+  position: relative;
+  border-radius: var(--r-md);
+  padding: 12px 16px 12px 20px;
+}
+
+.bannerPredict {
+  background: var(--predict-tint);
+}
+
+.bannerRisk {
+  background: var(--risk-tint);
+}
+
+.bannerBar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: var(--r-md) 0 0 var(--r-md);
+}
+
+.bannerBarPredict {
+  background: var(--predict);
+}
+
+.bannerBarRisk {
+  background: var(--risk);
+}
+
+.bannerTextPredict {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--predict);
+}
+
+.bannerTextRisk {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--risk);
+}
+
+.body {
+  padding: 24px 40px 48px;
+  max-width: 1280px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.85fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.sectionTitle {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 19px;
+  color: var(--ink);
+  margin-bottom: 14px;
+}
+
+.sectionTitleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.timestamp {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.cardBlockTitle {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.paragraph {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin-bottom: 20px;
+}
+
+.fileList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.fileRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fileIcon {
+  flex-shrink: 0;
+}
+
+.filePath {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.fileNote {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.divider {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+
+.textarea {
+  width: 100%;
+  height: 80px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--ink);
+  box-sizing: border-box;
+  resize: vertical;
+  outline: none;
+  margin-bottom: 16px;
+  font-family: var(--font-body);
+}
+
+.textarea:focus {
+  border-color: var(--signal);
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.factRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.factDot {
+  color: var(--verified);
+  font-size: 14px;
+}
+
+.factLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.factValue {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--ink);
+  margin-left: 4px;
+}
+
+.factCaption {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-left: 22px;
+}
+
+.spentBox {
+  margin-top: 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 16px;
+}
+
+.stepNote {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 10px;
+}
+
+.consoleHeadRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.runningTag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.runningDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--signal);
+  animation: dc-pulse 1.4s ease-in-out infinite;
+}
+
+.runningLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--signal);
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.historyTime {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-4);
+}
+
+.historyText {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+
+.historyTextSignal {
+  color: var(--signal);
+}
+
+.historyTextPredict {
+  color: var(--predict);
+}
+
+.historyTextRisk {
+  color: var(--risk);
+}
+
+.prStatPill {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 3px 8px;
+}
+
+.prStatAdd {
+  color: var(--verified);
+  background: var(--verified-tint);
+}
+
+.prStatDel {
+  color: var(--risk);
+  background: var(--risk-tint);
+}
+
+.prStatNeutral {
+  color: var(--ink-2);
+  background: var(--panel-2);
+}
+
+.costRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.emptyCard {
+  color: var(--ink-3);
+  font-size: 14px;
+  line-height: 1.6;
+}

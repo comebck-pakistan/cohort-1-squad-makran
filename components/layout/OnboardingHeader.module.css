@@ -1,0 +1,90 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 40px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+  width: 120px;
+}
+
+.steps {
+  display: flex;
+  align-items: center;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.badgePending {
+  border: 1px solid var(--border-strong);
+  color: var(--ink-4);
+}
+
+.badgeActive {
+  background: var(--signal);
+  color: #fff;
+  font-weight: 500;
+}
+
+.badgeDone {
+  background: var(--signal);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  font-family: var(--font-body);
+}
+
+.label {
+  font-size: 14px;
+}
+
+.labelActive {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.labelInactive {
+  color: var(--ink-3);
+}
+
+.connector {
+  width: 48px;
+  height: 1px;
+  margin: 0 16px;
+  background: var(--border);
+}
+
+.connectorDone {
+  background: var(--signal);
+}
+
+.connectorPending {
+  background: var(--border-strong);
+}
+
+.spacer {
+  width: 120px;
+}

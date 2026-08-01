@@ -1,0 +1,56 @@
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.track {
+  width: 36px;
+  height: 20px;
+  border-radius: var(--r-pill);
+  background: var(--border-strong);
+  position: relative;
+  transition: background-color 140ms ease;
+  flex-shrink: 0;
+}
+
+.input:checked + .track {
+  background: var(--signal);
+}
+
+.input:focus-visible + .track {
+  outline: 2px solid var(--signal-tint);
+  outline-offset: 2px;
+}
+
+.thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 140ms ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.input:checked + .track .thumb {
+  left: 18px;
+}
