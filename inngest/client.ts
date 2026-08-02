@@ -11,3 +11,19 @@ export interface MeetingReadyForProcessing {
 export interface MeetingConfirmed {
   meetingId: string;
 }
+
+export interface TicketAgentAssigned {
+  ticketId: string;
+}
+
+export interface TicketPlanDecision {
+  ticketId: string;
+  approved: boolean;
+  feedback: string | null;
+}
+
+export interface TicketReviewDecision {
+  ticketId: string;
+  approved: boolean;
+  feedback: string | null;
+}

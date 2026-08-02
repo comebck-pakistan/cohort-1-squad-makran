@@ -43,6 +43,7 @@ export type Database = {
           created_at: string
           files_touched_count: number
           id: string
+          log: Json
           owner_id: string
           ticket_id: string
           token_cost: number
@@ -52,6 +53,7 @@ export type Database = {
           created_at?: string
           files_touched_count?: number
           id?: string
+          log?: Json
           owner_id: string
           ticket_id: string
           token_cost?: number
@@ -61,6 +63,7 @@ export type Database = {
           created_at?: string
           files_touched_count?: number
           id?: string
+          log?: Json
           owner_id?: string
           ticket_id?: string
           token_cost?: number

@@ -109,14 +109,14 @@ export const mockTickets: TicketRow[] = [
 ];
 
 export const mockAgentRuns: AgentRunRow[] = [
-  { id: "run_1", owner_id: "owner_1", ticket_id: "TICKET-140", attempt_number: 1, files_touched_count: 2, token_cost: 0.31, created_at: "2026-07-25T10:00:00Z" },
-  { id: "run_2", owner_id: "owner_1", ticket_id: "TICKET-131", attempt_number: 1, files_touched_count: 4, token_cost: 0.62, created_at: "2026-07-20T10:00:00Z" },
-  { id: "run_3", owner_id: "owner_1", ticket_id: "TICKET-135", attempt_number: 1, files_touched_count: 3, token_cost: 0.48, created_at: "2026-07-27T11:00:00Z" },
-  { id: "run_4", owner_id: "owner_1", ticket_id: "TICKET-129", attempt_number: 1, files_touched_count: 5, token_cost: 1.02, created_at: "2026-06-01T10:00:00Z" },
-  { id: "run_5", owner_id: "owner_1", ticket_id: "TICKET-128", attempt_number: 1, files_touched_count: 1, token_cost: 0.09, created_at: "2026-05-14T10:00:00Z" },
-  { id: "run_6", owner_id: "owner_1", ticket_id: "TICKET-138", attempt_number: 1, files_touched_count: 3, token_cost: 0.28, created_at: "2026-07-28T10:20:00Z" },
-  { id: "run_7", owner_id: "owner_1", ticket_id: "TICKET-138", attempt_number: 2, files_touched_count: 4, token_cost: 0.33, created_at: "2026-07-29T09:40:00Z" },
-  { id: "run_8", owner_id: "owner_1", ticket_id: "TICKET-138", attempt_number: 3, files_touched_count: 4, token_cost: 0.71, created_at: "2026-07-30T09:15:00Z" },
+  { id: "run_1", owner_id: "owner_1", ticket_id: "TICKET-140", attempt_number: 1, files_touched_count: 2, token_cost: 0.31, created_at: "2026-07-25T10:00:00Z", log: [] },
+  { id: "run_2", owner_id: "owner_1", ticket_id: "TICKET-131", attempt_number: 1, files_touched_count: 4, token_cost: 0.62, created_at: "2026-07-20T10:00:00Z", log: [] },
+  { id: "run_3", owner_id: "owner_1", ticket_id: "TICKET-135", attempt_number: 1, files_touched_count: 3, token_cost: 0.48, created_at: "2026-07-27T11:00:00Z", log: [] },
+  { id: "run_4", owner_id: "owner_1", ticket_id: "TICKET-129", attempt_number: 1, files_touched_count: 5, token_cost: 1.02, created_at: "2026-06-01T10:00:00Z", log: [] },
+  { id: "run_5", owner_id: "owner_1", ticket_id: "TICKET-128", attempt_number: 1, files_touched_count: 1, token_cost: 0.09, created_at: "2026-05-14T10:00:00Z", log: [] },
+  { id: "run_6", owner_id: "owner_1", ticket_id: "TICKET-138", attempt_number: 1, files_touched_count: 3, token_cost: 0.28, created_at: "2026-07-28T10:20:00Z", log: [] },
+  { id: "run_7", owner_id: "owner_1", ticket_id: "TICKET-138", attempt_number: 2, files_touched_count: 4, token_cost: 0.33, created_at: "2026-07-29T09:40:00Z", log: [] },
+  { id: "run_8", owner_id: "owner_1", ticket_id: "TICKET-138", attempt_number: 3, files_touched_count: 4, token_cost: 0.71, created_at: "2026-07-30T09:15:00Z", log: [] },
 ];
 
 export function getTicketById(id: string): TicketRow | undefined {

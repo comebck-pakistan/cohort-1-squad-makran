@@ -37,6 +37,11 @@ SMTP_PORT=
 SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=
+
+# M5: Agent Runtime. Personal access token (classic, scopes: repo + workflow), not OAuth
+# (deviation, see M5 section below). github.com -> Settings -> Developer settings ->
+# Personal access tokens. Used server-side only, for branch/commit/PR/check-run API calls.
+GITHUB_TOKEN=
 ```
 
 Until Google/GitHub client id + secret are filled in, those two sign-in buttons will error at redirect. OTP email sign-in works with none of this filled in beyond the Supabase URL/anon key, since local dev catches OTP emails at `http://127.0.0.1:54324` (Mailpit) instead of sending them.
@@ -58,3 +63,13 @@ The Supabase CLI does not read `.env.local` either (see below) — always run `s
 **Local Mailpit SMTP for Nodemailer:** `supabase/config.toml`'s `[local_smtp]` section now sets `smtp_port = 54325` (was commented out) so Nodemailer on the host can reach the same local Mailpit that Supabase Auth already uses for OTP emails, no separate mail server needed for local dev. Briefing/notification emails land at `http://127.0.0.1:54324` alongside auth emails. Requires a full `supabase stop && supabase start` to pick up (config.toml changes, not `db reset`).
 
 **Recall.ai is a hard external dependency, no local/mock substitute.** The bot-join path (`scheduleBotMeeting`, the Recall webhook receiver) needs a real `RECALL_API_KEY` and a real scheduled meeting to test end-to-end; it was built against Recall's documented API conventions but is unverified against a live account. The manual-paste path (`createManualMeeting`) needs none of this and is what's actually been verified locally.
+
+## M5: Agent Runtime
+
+**GitHub auth deviates from the handoff's "OAuth (not GitHub App)" pick.** No token-persistence infra exists for OAuth provider tokens (Supabase Auth's GitHub sign-in doesn't request `repo` scope and doesn't durably store `provider_token` past the callback), so building real OAuth-to-repo-token plumbing was out of scope for this milestone. `GITHUB_TOKEN` (a classic PAT, scopes `repo` + `workflow`) is used instead, same external-hard-dependency pattern as `RECALL_API_KEY`. Settings -> Integrations' "Connect repo" now does a real API call (verifies the repo exists and the token can see it, then saves a `repos` row) but there's no repo picker, you type `owner/repo` directly.
+
+**A real GitHub repo is required to test the loop at all**, since there's no local/mock GitHub. Connect one via Settings -> Integrations (needs `GITHUB_TOKEN` set first). For the retry-cap exit criterion (needs_human after 3 failed attempts), that repo needs a GitHub Actions workflow that always fails on `pull_request`, since the agent has no visibility into the repo's actual file contents and can't reliably "fix" a real bug, only regenerate its guess each attempt.
+
+**CI status gates the execute step.** `getCheckStatus()` polls `GET /repos/{repo}/commits/{ref}/check-runs` every 20s (up to 5 min) after each commit; a repo with no CI configured at all is treated as an immediate pass (nothing to block on), so the happy-path exit criterion works without requiring you to author a workflow file, only the retry-cap criterion does.
+
+**`agent_runs.token_cost` is an integer column (locked schema), storing cents, not dollars.** The M1 mock data used decimal dollar values directly (a pre-existing inconsistency with the integer column type, not introduced this milestone); real writes now store `Math.round(dollarCost * 100)` and the UI divides by 100 at render time.

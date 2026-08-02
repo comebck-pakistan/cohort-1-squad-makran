@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
-import { mockRepos } from "@/mock/integrations";
-import type { RepoRow } from "@/types/db";
+import { Input } from "@/components/ui/Input";
+import { connectRepo, removeRepo, setDefaultRepo, disconnectGithub } from "@/lib/actions/repos";
+import type { RepoRow, IntegrationRow } from "@/types/db";
 import styles from "./IntegrationsScreen.module.css";
 
 const POLICIES = [
@@ -21,11 +23,20 @@ const POLICIES = [
   },
 ] as const;
 
-export function IntegrationsScreen() {
-  const [repos, setRepos] = useState<RepoRow[]>(mockRepos);
+interface IntegrationsScreenProps {
+  initialIntegrations: IntegrationRow[];
+  initialRepos: RepoRow[];
+}
+
+export function IntegrationsScreen({ initialIntegrations, initialRepos }: IntegrationsScreenProps) {
+  const router = useRouter();
+  const [repos, setRepos] = useState<RepoRow[]>(initialRepos);
   const [policy, setPolicy] = useState<"smart" | "always">("smart");
-  const [githubConnected, setGithubConnected] = useState(true);
+  const githubIntegration = initialIntegrations.find((i) => i.category === "repo" && i.provider === "github");
+  const [githubConnected, setGithubConnected] = useState(githubIntegration?.status === "connected");
   const [calendarConnected, setCalendarConnected] = useState(true);
+  const [newRepo, setNewRepo] = useState("");
+  const [connecting, setConnecting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   function showToast(msg: string) {
@@ -33,12 +44,39 @@ export function IntegrationsScreen() {
     setTimeout(() => setToast(null), 2400);
   }
 
-  function setDefaultRepo(id: string) {
-    setRepos((rs) => rs.map((r) => ({ ...r, is_default: r.id === id })));
+  async function handleConnectRepo() {
+    const fullName = newRepo.trim();
+    if (!fullName) return;
+    setConnecting(true);
+    try {
+      const repo = await connectRepo(fullName);
+      setRepos((rs) => [...rs, repo]);
+      setGithubConnected(true);
+      setNewRepo("");
+      showToast(`Connected ${fullName}.`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Could not connect that repo.");
+    } finally {
+      setConnecting(false);
+    }
   }
 
-  function removeRepo(id: string) {
+  async function handleSetDefaultRepo(id: string) {
+    setRepos((rs) => rs.map((r) => ({ ...r, is_default: r.id === id })));
+    await setDefaultRepo(id);
+  }
+
+  async function handleRemoveRepo(id: string) {
     setRepos((rs) => rs.filter((r) => r.id !== id));
+    await removeRepo(id);
+  }
+
+  async function handleDisconnectGithub() {
+    setGithubConnected(false);
+    setRepos([]);
+    await disconnectGithub();
+    showToast("GitHub disconnected.");
+    router.refresh();
   }
 
   return (
@@ -58,39 +96,42 @@ export function IntegrationsScreen() {
           {githubConnected ? (
             <>
               <span className={styles.connectedPill}>● Connected</span>
-              <span className={styles.accountLabel}>@jordan-freelance</span>
-              <button
-                className={styles.disconnectLink}
-                onClick={() => {
-                  setGithubConnected(false);
-                  showToast("GitHub disconnected.");
-                }}
-              >
+              {githubIntegration?.account_label && (
+                <span className={styles.accountLabel}>@{githubIntegration.account_label}</span>
+              )}
+              <button className={styles.disconnectLink} onClick={handleDisconnectGithub}>
                 Disconnect
               </button>
             </>
           ) : (
-            <Button variant="primary" onClick={() => setGithubConnected(true)}>
-              Connect GitHub
-            </Button>
+            <span className={styles.accountLabel}>Not connected yet, connect a repo below.</span>
           )}
         </div>
         <div className={styles.subNote}>
-          OAuth · PRs opened under your GitHub account · commits attributed to Agentic OS Agent
-          &lt;agent@agentcos.dev&gt;
+          Personal access token (GITHUB_TOKEN) · PRs opened under the token&rsquo;s account · commits
+          attributed to Agentic OS Agent &lt;agent@agentcos.dev&gt;
         </div>
 
         <div className={styles.divider} />
 
         <div className={styles.subSectionHead}>
           <div className={styles.subSectionTitle}>Connected repositories</div>
-          <Button
-            variant="primary"
-            style={{ height: 36, padding: "0 14px", fontSize: 13 }}
-            onClick={() => showToast("Opening GitHub repo picker…")}
-          >
-            Connect repo
-          </Button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Input
+              placeholder="owner/repo"
+              value={newRepo}
+              onChange={(e) => setNewRepo(e.target.value)}
+              style={{ height: 36, width: 220, fontSize: 13 }}
+            />
+            <Button
+              variant="primary"
+              style={{ height: 36, padding: "0 14px", fontSize: 13 }}
+              onClick={handleConnectRepo}
+              disabled={connecting || !newRepo.trim()}
+            >
+              {connecting ? "Connecting…" : "Connect repo"}
+            </Button>
+          </div>
         </div>
 
         {repos.length === 0 ? (
@@ -113,10 +154,10 @@ export function IntegrationsScreen() {
                   </svg>
                   <span className={styles.repoNameText}>{r.full_name}</span>
                 </span>
-                <span className={styles.repoBranch}>main</span>
-                <Toggle checked={r.is_default} onChange={() => setDefaultRepo(r.id)} label="Default" />
-                <span className={styles.repoDate}>Sun Aug 2</span>
-                <button className={styles.repoRemove} onClick={() => removeRepo(r.id)}>
+                <span className={styles.repoBranch}>default</span>
+                <Toggle checked={r.is_default} onChange={() => handleSetDefaultRepo(r.id)} label="Default" />
+                <span className={styles.repoDate}>–</span>
+                <button className={styles.repoRemove} onClick={() => handleRemoveRepo(r.id)}>
                   Remove
                 </button>
               </div>

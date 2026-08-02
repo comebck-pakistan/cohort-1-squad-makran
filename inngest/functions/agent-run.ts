@@ -1,0 +1,213 @@
+import {
+  inngest,
+  type TicketAgentAssigned,
+  type TicketPlanDecision,
+  type TicketReviewDecision,
+} from "@/inngest/client";
+import { createServiceClient } from "@/lib/supabase/service";
+import { generatePlan, generateFileChanges, formatPlanSummary } from "@/lib/llm/agent";
+import { ensureBranch, commitFiles, openPullRequest, mergePullRequest, getCheckStatus, verifyRepoAccess } from "@/lib/github";
+
+const MAX_ATTEMPTS = 3;
+const DECISION_TIMEOUT = "1d";
+const MAX_CI_POLLS = 15;
+
+type ServiceClient = ReturnType<typeof createServiceClient>;
+
+async function appendLog(
+  supabase: ServiceClient,
+  runId: string,
+  text: string,
+  ok?: boolean
+): Promise<void> {
+  const { data } = await supabase.from("agent_runs").select("log").eq("id", runId).single();
+  const log = Array.isArray(data?.log) ? data.log : [];
+  log.push({ time: new Date().toISOString(), text, ok });
+  await supabase.from("agent_runs").update({ log }).eq("id", runId);
+}
+
+/**
+ * Single durable function for the whole plan/approve/execute/review loop (docs/agentic-os-build-plan.md M5).
+ * Domain-level retry cap of 3, separate from Inngest's own transient-failure retry: each loop
+ * iteration is one attempt, whether it ends in a CI failure or a human "request changes."
+ */
+export const agentRun = inngest.createFunction(
+  { id: "agent-run", triggers: [{ event: "ticket/agent-assigned" }] },
+  async ({ event, step }) => {
+    const { ticketId } = event.data as TicketAgentAssigned;
+    const supabase = createServiceClient();
+
+    const ticket = await step.run("load-ticket", async () => {
+      const { data, error } = await supabase.from("tickets").select("*").eq("id", ticketId).single();
+      if (error) throw error;
+      return data;
+    });
+
+    if (!ticket.repo_id) {
+      await step.run("no-repo-needs-human", async () => {
+        await supabase.from("tickets").update({ state: "needs_human" }).eq("id", ticketId);
+      });
+      return { status: "needs_human" as const, reason: "No repo connected to this ticket." };
+    }
+
+    const repo = await step.run("load-repo", async () => {
+      const { data, error } = await supabase.from("repos").select("*").eq("id", ticket.repo_id!).single();
+      if (error) throw error;
+      return data;
+    });
+
+    let feedback: string | undefined;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const run = await step.run(`create-run-${attempt}`, async () => {
+        const { data, error } = await supabase
+          .from("agent_runs")
+          .insert({
+            owner_id: ticket.owner_id,
+            ticket_id: ticketId,
+            attempt_number: attempt,
+            files_touched_count: 0,
+            token_cost: 0,
+            log: [],
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      });
+
+      const { plan, costCents: planCost } = await step.run(`plan-${attempt}`, () =>
+        generatePlan({
+          ticketTitle: ticket.title,
+          ticketDescription: ticket.plan_summary ?? "",
+          repoFullName: repo.full_name,
+          feedback,
+        })
+      );
+
+      await step.run(`save-plan-${attempt}`, async () => {
+        await supabase
+          .from("tickets")
+          .update({ state: "awaiting_plan_approval", plan_summary: formatPlanSummary(plan), attempt_count: attempt })
+          .eq("id", ticketId);
+        await supabase.from("agent_runs").update({ token_cost: planCost }).eq("id", run.id);
+      });
+      await step.run(`log-plan-${attempt}`, () =>
+        appendLog(supabase, run.id, `Plan generated: ${plan.files.length} file(s) proposed`, true)
+      );
+
+      const planDecision = await step.waitForEvent(`plan-decision-${attempt}`, {
+        event: "ticket/plan-decision",
+        timeout: DECISION_TIMEOUT,
+        match: "data.ticketId",
+      });
+      const planData = planDecision?.data as TicketPlanDecision | undefined;
+
+      if (!planData || planData.approved === false) {
+        feedback = planData?.feedback ?? "Plan rejected without specific feedback.";
+        await step.run(`log-plan-rejected-${attempt}`, () =>
+          appendLog(supabase, run.id, planData ? "Plan rejected, re-planning" : "Plan approval timed out", false)
+        );
+        if (attempt === MAX_ATTEMPTS) {
+          await step.run(`needs-human-plan-${attempt}`, async () => {
+            await supabase.from("tickets").update({ state: "needs_human" }).eq("id", ticketId);
+          });
+          return { status: "needs_human" as const, reason: "Plan rejected at max attempts." };
+        }
+        continue;
+      }
+
+      await step.run(`set-executing-${attempt}`, async () => {
+        await supabase.from("tickets").update({ state: "executing" }).eq("id", ticketId);
+      });
+
+      const repoInfo = await step.run(`repo-info-${attempt}`, () => verifyRepoAccess(repo.full_name));
+      const branch = `agent/${ticketId}-${attempt}`;
+      await step.run(`branch-${attempt}`, () => ensureBranch(repo.full_name, repoInfo.defaultBranch, branch));
+      await step.run(`log-branch-${attempt}`, () => appendLog(supabase, run.id, `Checked out branch: ${branch}`, true));
+
+      const changes = await step.run(`generate-changes-${attempt}`, () =>
+        generateFileChanges({ ticketTitle: ticket.title, ticketDescription: ticket.plan_summary ?? "", plan })
+      );
+
+      await step.run(`commit-${attempt}`, () => commitFiles(repo.full_name, branch, changes.files, changes.commitMessage));
+      await step.run(`log-commit-${attempt}`, async () => {
+        await supabase
+          .from("agent_runs")
+          .update({ files_touched_count: changes.files.length, token_cost: planCost + changes.costCents })
+          .eq("id", run.id);
+        await appendLog(supabase, run.id, `Committed ${changes.files.length} file(s) to ${branch}`, true);
+      });
+
+      let ciStatus: "pending" | "success" | "failure" = "pending";
+      for (let poll = 0; poll < MAX_CI_POLLS; poll++) {
+        ciStatus = await step.run(`poll-ci-${attempt}-${poll}`, () => getCheckStatus(repo.full_name, branch));
+        if (ciStatus !== "pending") break;
+        await step.sleep(`ci-wait-${attempt}-${poll}`, "20s");
+      }
+      await step.run(`log-ci-${attempt}`, () =>
+        appendLog(supabase, run.id, `CI ${ciStatus === "success" ? "passed" : ciStatus === "failure" ? "failed" : "timed out"}`, ciStatus === "success")
+      );
+
+      if (ciStatus !== "success") {
+        feedback = `The test suite did not pass on attempt ${attempt}. Fix the failing checks.`;
+        if (attempt === MAX_ATTEMPTS) {
+          await step.run(`needs-human-ci-${attempt}`, async () => {
+            await supabase.from("tickets").update({ state: "needs_human" }).eq("id", ticketId);
+          });
+          return { status: "needs_human" as const, reason: "CI failed at max attempts." };
+        }
+        continue;
+      }
+
+      const pr = await step.run(`open-pr-${attempt}`, () =>
+        openPullRequest({
+          fullName: repo.full_name,
+          head: branch,
+          base: repoInfo.defaultBranch,
+          title: ticket.title,
+          body: `${plan.summary}\n\nOpened by Agentic OS Agent. Attempt ${attempt} of ${MAX_ATTEMPTS}.`,
+        })
+      );
+
+      await step.run(`set-review-${attempt}`, async () => {
+        await supabase.from("tickets").update({ state: "review", pr_url: pr.url }).eq("id", ticketId);
+      });
+      await step.run(`log-pr-${attempt}`, () => appendLog(supabase, run.id, `PR opened: ${pr.url}`, true));
+
+      const reviewDecision = await step.waitForEvent(`review-decision-${attempt}`, {
+        event: "ticket/review-decision",
+        timeout: DECISION_TIMEOUT,
+        match: "data.ticketId",
+      });
+      const reviewData = reviewDecision?.data as TicketReviewDecision | undefined;
+
+      if (reviewData?.approved) {
+        await step.run(`merge-pr-${attempt}`, () => mergePullRequest(repo.full_name, pr.number));
+        await step.run(`set-done-${attempt}`, async () => {
+          await supabase.from("tickets").update({ state: "done" }).eq("id", ticketId);
+        });
+        await step.run(`log-merged-${attempt}`, () => appendLog(supabase, run.id, "PR merged", true));
+        return { status: "done" as const, prUrl: pr.url };
+      }
+
+      feedback = reviewData?.feedback ?? "Review timed out waiting for a decision.";
+      await step.run(`log-changes-requested-${attempt}`, () =>
+        appendLog(supabase, run.id, reviewData ? "Changes requested, re-planning" : "Review approval timed out", false)
+      );
+
+      if (attempt === MAX_ATTEMPTS) {
+        await step.run(`needs-human-review-${attempt}`, async () => {
+          await supabase.from("tickets").update({ state: "needs_human" }).eq("id", ticketId);
+        });
+        return { status: "needs_human" as const, reason: "Changes requested at max attempts." };
+      }
+
+      await step.run(`set-changes-requested-${attempt}`, async () => {
+        await supabase.from("tickets").update({ state: "changes_requested" }).eq("id", ticketId);
+      });
+    }
+
+    return { status: "needs_human" as const, reason: "Exhausted attempts." };
+  }
+);
