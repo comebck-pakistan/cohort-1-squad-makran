@@ -73,3 +73,18 @@ The Supabase CLI does not read `.env.local` either (see below) — always run `s
 **CI status gates the execute step.** `getCheckStatus()` polls `GET /repos/{repo}/commits/{ref}/check-runs` every 20s (up to 5 min) after each commit; a repo with no CI configured at all is treated as an immediate pass (nothing to block on), so the happy-path exit criterion works without requiring you to author a workflow file, only the retry-cap criterion does.
 
 **`agent_runs.token_cost` is an integer column (locked schema), storing cents, not dollars.** The M1 mock data used decimal dollar values directly (a pre-existing inconsistency with the integer column type, not introduced this milestone); real writes now store `Math.round(dollarCost * 100)` and the UI divides by 100 at render time.
+
+## M7: Notifications
+
+**Optional, only affects links inside notification emails:**
+```
+# M7: base URL used to build ticket links in notification emails. Defaults to
+# http://localhost:3000 for local dev if unset.
+NEXT_PUBLIC_APP_URL=
+```
+
+Everything else needed for M7 (SMTP delivery) is already covered by M4's `SMTP_*` vars above, defaulting to local Mailpit. No new hard external dependency.
+
+**Preferences are stored on `auth.users.user_metadata.notification_prefs`**, same pattern as M3's voice-profile survey answers: a per-user singleton, no new table. See `lib/notifications.ts` for the shape and defaults.
+
+**In-app delivery is not built.** The per-trigger "In-app" toggles on Settings, Notifications are real (saved to and loaded from `user_metadata`), but there's no notification-center screen to actually deliver to, none of the 18 designed screens is one. Only email delivery (via `lib/mail.ts`, Nodemailer/Gmail SMTP, same as M4's briefing emails) is real.

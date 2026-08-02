@@ -27,3 +27,8 @@ export interface TicketReviewDecision {
   approved: boolean;
   feedback: string | null;
 }
+
+export interface TicketStateChanged {
+  ticketId: string;
+  state: string;
+}

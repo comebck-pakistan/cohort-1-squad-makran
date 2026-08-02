@@ -2,6 +2,7 @@ import { inngest, type MeetingConfirmed } from "@/inngest/client";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendEmail } from "@/lib/mail";
 import { formatDateTime } from "@/lib/format";
+import { parseNotificationPrefs } from "@/lib/notifications";
 
 /**
  * Fires 15 min before a known-client meeting. Reads cached client analysis, no new LLM call
@@ -44,11 +45,15 @@ export const preMeetingBriefing = inngest.createFunction(
       return data;
     });
 
-    const ownerEmail = await step.run("load-owner-email", async () => {
+    const owner = await step.run("load-owner", async () => {
       const { data, error } = await supabase.auth.admin.getUserById(meeting.owner_id);
       if (error) throw error;
-      return data.user.email!;
+      return { email: data.user.email!, prefs: parseNotificationPrefs(data.user.user_metadata) };
     });
+
+    if (!owner.prefs.briefingEmail) {
+      return { skipped: true, reason: "briefingEmail preference off" };
+    }
 
     await step.run("send-briefing-email", async () => {
       const priceLine =
@@ -63,7 +68,7 @@ export const preMeetingBriefing = inngest.createFunction(
         : "<div>No past proposals with this client yet.</div>";
 
       await sendEmail({
-        to: ownerEmail,
+        to: owner.email,
         subject: `Briefing: ${meeting.title} at ${formatDateTime(meeting.starts_at)}`,
         html: `
           <h2>${meeting.title}</h2>
@@ -79,6 +84,6 @@ export const preMeetingBriefing = inngest.createFunction(
       });
     });
 
-    return { sent: true, to: ownerEmail };
+    return { sent: true, to: owner.email };
   }
 );

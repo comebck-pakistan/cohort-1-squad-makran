@@ -7,6 +7,8 @@ import {
 import { createServiceClient } from "@/lib/supabase/service";
 import { generatePlan, generateFileChanges, formatPlanSummary } from "@/lib/llm/agent";
 import { ensureBranch, commitFiles, openPullRequest, mergePullRequest, getCheckStatus, verifyRepoAccess } from "@/lib/github";
+import { updateTicket } from "@/lib/db/tickets";
+import type { TicketRow } from "@/types/db";
 
 const MAX_ATTEMPTS = 3;
 const DECISION_TIMEOUT = "1d";
@@ -27,6 +29,19 @@ async function appendLog(
 }
 
 /**
+ * Writes ticket.state and emits `ticket/state-changed`, both inside the same step.run call site
+ * so a replayed/memoized step never re-sends the event (M5's log-append pattern, same reasoning).
+ */
+async function setTicketState(
+  supabase: ServiceClient,
+  ticketId: string,
+  patch: Partial<Omit<TicketRow, "id" | "owner_id" | "created_at">> & { state: TicketRow["state"] }
+): Promise<void> {
+  await updateTicket(supabase, ticketId, patch);
+  await inngest.send({ name: "ticket/state-changed", data: { ticketId, state: patch.state } });
+}
+
+/**
  * Single durable function for the whole plan/approve/execute/review loop (docs/agentic-os-build-plan.md M5).
  * Domain-level retry cap of 3, separate from Inngest's own transient-failure retry: each loop
  * iteration is one attempt, whether it ends in a CI failure or a human "request changes."
@@ -44,9 +59,7 @@ export const agentRun = inngest.createFunction(
     });
 
     if (!ticket.repo_id) {
-      await step.run("no-repo-needs-human", async () => {
-        await supabase.from("tickets").update({ state: "needs_human" }).eq("id", ticketId);
-      });
+      await step.run("no-repo-needs-human", () => setTicketState(supabase, ticketId, { state: "needs_human" }));
       return { status: "needs_human" as const, reason: "No repo connected to this ticket." };
     }
 
@@ -86,10 +99,11 @@ export const agentRun = inngest.createFunction(
       );
 
       await step.run(`save-plan-${attempt}`, async () => {
-        await supabase
-          .from("tickets")
-          .update({ state: "awaiting_plan_approval", plan_summary: formatPlanSummary(plan), attempt_count: attempt })
-          .eq("id", ticketId);
+        await setTicketState(supabase, ticketId, {
+          state: "awaiting_plan_approval",
+          plan_summary: formatPlanSummary(plan),
+          attempt_count: attempt,
+        });
         await supabase.from("agent_runs").update({ token_cost: planCost }).eq("id", run.id);
       });
       await step.run(`log-plan-${attempt}`, () =>
@@ -109,17 +123,13 @@ export const agentRun = inngest.createFunction(
           appendLog(supabase, run.id, planData ? "Plan rejected, re-planning" : "Plan approval timed out", false)
         );
         if (attempt === MAX_ATTEMPTS) {
-          await step.run(`needs-human-plan-${attempt}`, async () => {
-            await supabase.from("tickets").update({ state: "needs_human" }).eq("id", ticketId);
-          });
+          await step.run(`needs-human-plan-${attempt}`, () => setTicketState(supabase, ticketId, { state: "needs_human" }));
           return { status: "needs_human" as const, reason: "Plan rejected at max attempts." };
         }
         continue;
       }
 
-      await step.run(`set-executing-${attempt}`, async () => {
-        await supabase.from("tickets").update({ state: "executing" }).eq("id", ticketId);
-      });
+      await step.run(`set-executing-${attempt}`, () => setTicketState(supabase, ticketId, { state: "executing" }));
 
       const repoInfo = await step.run(`repo-info-${attempt}`, () => verifyRepoAccess(repo.full_name));
       const branch = `agent/${ticketId}-${attempt}`;
@@ -152,9 +162,7 @@ export const agentRun = inngest.createFunction(
       if (ciStatus !== "success") {
         feedback = `The test suite did not pass on attempt ${attempt}. Fix the failing checks.`;
         if (attempt === MAX_ATTEMPTS) {
-          await step.run(`needs-human-ci-${attempt}`, async () => {
-            await supabase.from("tickets").update({ state: "needs_human" }).eq("id", ticketId);
-          });
+          await step.run(`needs-human-ci-${attempt}`, () => setTicketState(supabase, ticketId, { state: "needs_human" }));
           return { status: "needs_human" as const, reason: "CI failed at max attempts." };
         }
         continue;
@@ -170,9 +178,7 @@ export const agentRun = inngest.createFunction(
         })
       );
 
-      await step.run(`set-review-${attempt}`, async () => {
-        await supabase.from("tickets").update({ state: "review", pr_url: pr.url }).eq("id", ticketId);
-      });
+      await step.run(`set-review-${attempt}`, () => setTicketState(supabase, ticketId, { state: "review", pr_url: pr.url }));
       await step.run(`log-pr-${attempt}`, () => appendLog(supabase, run.id, `PR opened: ${pr.url}`, true));
 
       const reviewDecision = await step.waitForEvent(`review-decision-${attempt}`, {
@@ -184,9 +190,7 @@ export const agentRun = inngest.createFunction(
 
       if (reviewData?.approved) {
         await step.run(`merge-pr-${attempt}`, () => mergePullRequest(repo.full_name, pr.number));
-        await step.run(`set-done-${attempt}`, async () => {
-          await supabase.from("tickets").update({ state: "done" }).eq("id", ticketId);
-        });
+        await step.run(`set-done-${attempt}`, () => setTicketState(supabase, ticketId, { state: "done" }));
         await step.run(`log-merged-${attempt}`, () => appendLog(supabase, run.id, "PR merged", true));
         return { status: "done" as const, prUrl: pr.url };
       }
@@ -197,15 +201,13 @@ export const agentRun = inngest.createFunction(
       );
 
       if (attempt === MAX_ATTEMPTS) {
-        await step.run(`needs-human-review-${attempt}`, async () => {
-          await supabase.from("tickets").update({ state: "needs_human" }).eq("id", ticketId);
-        });
+        await step.run(`needs-human-review-${attempt}`, () => setTicketState(supabase, ticketId, { state: "needs_human" }));
         return { status: "needs_human" as const, reason: "Changes requested at max attempts." };
       }
 
-      await step.run(`set-changes-requested-${attempt}`, async () => {
-        await supabase.from("tickets").update({ state: "changes_requested" }).eq("id", ticketId);
-      });
+      await step.run(`set-changes-requested-${attempt}`, () =>
+        setTicketState(supabase, ticketId, { state: "changes_requested" })
+      );
     }
 
     return { status: "needs_human" as const, reason: "Exhausted attempts." };

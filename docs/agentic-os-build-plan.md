@@ -53,7 +53,7 @@ M3  Proposal Drafter (pgvector embeddings + retrieval + generation)        : DON
 M4  Meetings pipeline (Recall.ai + Inngest + ticketization)                : DONE (manual-paste path verified local; Recall.ai code-complete, unverified, no account) [was M6]
 M5  Agent Runtime (Inngest steps + GitHub API + PR flow)                   : code-complete, E2E verification skipped by user decision (needs GITHUB_TOKEN + test repo, deferred) [was M7]
 M6  Insights Dashboard (pure DB aggregation, no LLM)                       : DONE (local, verified against hand-seeded proposals) [was M8]
-M7  Notifications (Inngest scheduled + Nodemailer)                        [was M9]
+M7  Notifications (Inngest scheduled + Nodemailer)                        : DONE (local, all 3 triggers + opt-in verified via staged test) [was M9]
       ↑ web app (frontend + backend) fully running end-to-end here ↑
 M8  Chrome extension screens 19–25, build against mock data                [was M2]: designs DONE, build not started
 M9  Explain the Client (real data: extension content script → LLM → cache) [was M4], depends on M8
@@ -227,11 +227,21 @@ Also: since no error states existed yet (Section 6 open question), an error/empt
 
 ### 10. M7 — Notifications *(was M9)*
 
-**Status: not started.**
+**Status: ✅ DONE (local Supabase + Inngest dev server + Mailpit).**
 
-**Scope:** the 3 fixed triggers (PR ready, needs-human, pre-meeting briefing) fire as Inngest events sent from the agent-run and briefing functions above; a single `inngest/functions/notify.ts` handles delivery via Nodemailer/Gmail SMTP, plus the global opt-in "every ticket status change" (off by default). Settings — Notifications screen (already designed, Screen 16) wired to real preference storage.
+**Scope, as built**
+- `agent-run.ts`'s every ticket-state write now goes through a new `setTicketState()` helper (DB update + `inngest.send("ticket/state-changed", {ticketId, state})`, both inside the same `step.run`, so a replayed/memoized step never double-sends). `tickets.ts`'s `assignAgentToTicket` emits the same event for `agent_running`.
+- `inngest/functions/notify.ts`: reacts to `ticket/state-changed`. `review` and `needs_human` are the two named fixed triggers, each gated by its own preference; every other state only emails if the user opted into "every status change" (so turning that on notifies about transitions not already covered by a specific trigger, rather than double-firing on `review`/`needs_human` too).
+- `lib/notifications.ts` / `lib/actions/notifications.ts`: `NotificationPrefs` stored on `auth.users.user_metadata.notification_prefs`, same per-user-singleton pattern as M3's voice profile, no new table. Defaults match the original design mock exactly (PR-ready and stuck default on for both channels, briefing defaults email-on/in-app-off, every-change defaults off).
+- Settings → Notifications screen (Screen 16) now takes `initialPrefs`/`email` props, every toggle calls `saveNotificationPrefs` immediately on change (same "optimistic update + real server action" pattern as the rest of the app), real signed-in email shown instead of the mock's hardcoded `jordan@gmail.com`.
+- `briefing.ts` (M4's already-verified pre-meeting briefing function) keeps its own inline `sendEmail` call rather than being rerouted through generic `ticket/state-changed`-style events, since meetings aren't tickets and rebuilding its rich HTML content a second place inside `notify.ts` would be pure duplication. It now loads the same real `notification_prefs` and skips the send if `briefingEmail` is off, so it's gated by the same real preference store as the other two triggers.
 
-**Exit criteria:** all 3 triggers fire correctly in a staged test; opt-in toggle correctly gates the extra notifications.
+**Discovered during build / deviations:**
+- The handoff's "email (Resend) + in-app" delivery channel was never fully designed: none of the 18 designed screens is an in-app notification center/inbox, so there is nowhere to actually deliver an in-app notification to. The per-trigger "In-app" toggles on the Settings screen are real (saved to and loaded from `user_metadata`, persist correctly across reload) but currently have no delivery mechanism behind them, this is called out directly in the screen's copy ("this toggle is saved but has no effect") rather than silently doing nothing. Building a notification-center screen was judged out of scope for this milestone.
+- Resend (per the original handoff) was never adopted anywhere in this build; M4 already chose Nodemailer/Gmail SMTP (defaulting to local Mailpit) and M7 continues that, no new hard external dependency introduced.
+- Added `NEXT_PUBLIC_APP_URL` (optional, defaults to `http://localhost:3000`) purely to build a clickable ticket link inside notification emails.
+
+**Exit criteria, verified 2026-08-02:** staged test against the real local stack (Inngest dev server events sent directly via its `/e/test` endpoint, real Mailpit inbox, real signed-in test account). Confirmed, in order: (1) `review` state fires a real PR-ready email; (2) `needs_human` fires a real "agent stuck" email; (3) an unrelated state (`executing`) with `everyChange` off sends nothing; (4) toggling `everyChange` on via the real Settings UI (confirmed persisted to `user_metadata` in the DB) and resending the same `executing` event sends a real generic status-change email; (5) toggling `prReadyEmail` off and resending `review` sends nothing (and does not fall through to the generic email either, confirming the no-double-fire rule); (6) a real `meeting/confirmed` event with `briefingEmail` off completes the function with the send step correctly skipped, no email; (7) toggling `briefingEmail` back on and resending a fresh `meeting/confirmed` event sends the real briefing email (regression check that M4's briefing content still renders correctly post-gating-refactor). All test tickets/meetings/clients and the test account's `notification_prefs` were deleted/reset afterward. `tsc`/`eslint`/`npm run build` all clean.
 
 **Web app milestone, exit criteria for the whole run:** once M2–M7 above are done, the web app (frontend + backend) is fully running end-to-end on real data, with nothing left mocked. This is the gate before Chrome extension work resumes.
 

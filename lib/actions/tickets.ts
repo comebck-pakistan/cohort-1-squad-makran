@@ -32,6 +32,7 @@ export async function fetchTicketDetail(
 export async function assignAgentToTicket(ticketId: string): Promise<void> {
   const { supabase } = await requireOwnerId();
   await updateTicket(supabase, ticketId, { state: "agent_running", attempt_count: 0, pr_url: null });
+  await inngest.send({ name: "ticket/state-changed", data: { ticketId, state: "agent_running" } });
   await inngest.send({ name: "ticket/agent-assigned", data: { ticketId } });
 }
 
