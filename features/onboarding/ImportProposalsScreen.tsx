@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { OnboardingHeader } from "@/components/layout/OnboardingHeader";
+import { importPastProposals } from "@/lib/actions/proposals";
 import styles from "./ImportProposalsScreen.module.css";
 
 interface ProposalDraft {
@@ -50,6 +51,7 @@ export function ImportProposalsScreen() {
   const [manualCategory, setManualCategory] = useState("");
   const [manualRate, setManualRate] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -256,17 +258,33 @@ export function ImportProposalsScreen() {
         </div>
 
         <div className={styles.footer}>
-          <Button variant="secondary" onClick={() => showToast("Skipped. You can add proposals later from Settings.")}>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              showToast("Skipped. You can add proposals later from Settings.");
+              router.push(`/onboarding/voice?imported=0`);
+            }}
+          >
             Skip for now
           </Button>
           <Button
             variant="primary"
-            onClick={() => {
-              showToast("Saved. Continuing to Voice…");
-              router.push("/onboarding/voice");
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                const { imported } = await importPastProposals(
+                  proposals.map((p) => ({ title: p.title, text: p.text }))
+                );
+                showToast("Saved. Continuing to Voice…");
+                router.push(`/onboarding/voice?imported=${imported}`);
+              } catch {
+                showToast("Could not save proposals. Try again.");
+                setSaving(false);
+              }
             }}
           >
-            Save &amp; continue
+            {saving ? "Saving…" : "Save & continue"}
           </Button>
         </div>
       </div>

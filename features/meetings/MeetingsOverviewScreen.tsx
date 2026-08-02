@@ -6,7 +6,6 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { AddMeetingModal } from "./AddMeetingModal";
-import { mockMeetings } from "@/mock/meetings";
 import { getClientById } from "@/mock/clients";
 import { formatRelative, formatDateTime } from "@/lib/format";
 import type { MeetingRow } from "@/types/db";
@@ -14,34 +13,44 @@ import styles from "./MeetingsOverviewScreen.module.css";
 
 const NOW = new Date("2026-08-02T14:10:00Z");
 
-export function MeetingsOverviewScreen() {
+interface MeetingsOverviewScreenProps {
+  initialMeetings: MeetingRow[];
+}
+
+export function MeetingsOverviewScreen({ initialMeetings }: MeetingsOverviewScreenProps) {
   const router = useRouter();
+  const [optimistic, setOptimistic] = useState<MeetingRow[]>([]);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  const meetings = useMemo(
+    () => [...optimistic.filter((o) => !initialMeetings.some((m) => m.id === o.id)), ...initialMeetings],
+    [optimistic, initialMeetings]
+  );
 
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(null), 2400);
   }
 
-  const suggestion = mockMeetings.find(
+  const suggestion = meetings.find(
     (m) => m.status === "scheduled" && !m.known_client && !dismissedIds.includes(m.id)
   );
 
   const upcoming = useMemo(
-    () => mockMeetings.filter((m) => m.status === "scheduled").sort((a, b) => a.starts_at.localeCompare(b.starts_at)),
-    []
+    () => meetings.filter((m) => m.status === "scheduled").sort((a, b) => a.starts_at.localeCompare(b.starts_at)),
+    [meetings]
   );
 
-  const inProgress = mockMeetings.filter((m) => m.status === "processing" || m.status === "in_progress");
+  const inProgress = meetings.filter((m) => m.status === "processing" || m.status === "in_progress");
 
   const past = useMemo(
     () =>
-      mockMeetings
+      meetings
         .filter((m) => m.status === "ready" || m.status === "failed")
         .sort((a, b) => b.starts_at.localeCompare(a.starts_at)),
-    []
+    [meetings]
   );
 
   function botStatusChip(m: MeetingRow) {
@@ -56,9 +65,14 @@ export function MeetingsOverviewScreen() {
       <PageHeader
         title="Meetings"
         action={
-          <Button variant="primary" onClick={() => setModalOpen(true)}>
-            Add meeting
-          </Button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button variant="secondary" onClick={() => router.refresh()}>
+              Refresh
+            </Button>
+            <Button variant="primary" onClick={() => setModalOpen(true)}>
+              Add meeting
+            </Button>
+          </div>
         }
       />
       <div className={styles.content}>
@@ -154,7 +168,7 @@ export function MeetingsOverviewScreen() {
                 <div style={{ flex: 1, minWidth: 260 }}>
                   <div className={styles.cardTitle}>{m.title}</div>
                   <div className={styles.cardNote}>
-                    Started {formatRelative(m.starts_at, NOW)} · Recall bot joined · transcript processing
+                    Started {formatRelative(m.starts_at, NOW)} · transcript processing
                   </div>
                 </div>
                 <div className={styles.progressRight}>
@@ -162,7 +176,7 @@ export function MeetingsOverviewScreen() {
                     <span className={styles.progressDot} />
                     <span className={styles.progressLabel}>Processing</span>
                   </div>
-                  <div className={styles.progressNote}>Transcript will be ready when the call ends.</div>
+                  <div className={styles.progressNote}>Hit Refresh once processing finishes.</div>
                 </div>
               </div>
             ))
@@ -224,9 +238,11 @@ export function MeetingsOverviewScreen() {
       {modalOpen && (
         <AddMeetingModal
           onClose={() => setModalOpen(false)}
-          onScheduled={(msg) => {
+          onCreated={(meeting, msg) => {
             setModalOpen(false);
+            setOptimistic((ms) => [meeting, ...ms]);
             showToast(msg);
+            setTimeout(() => router.refresh(), 3000);
           }}
         />
       )}

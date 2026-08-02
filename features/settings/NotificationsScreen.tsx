@@ -3,18 +3,17 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Toggle } from "@/components/ui/Toggle";
+import { saveNotificationPrefs } from "@/lib/actions/notifications";
+import type { NotificationPrefs } from "@/lib/notifications";
 import styles from "./NotificationsScreen.module.css";
 
-interface ChannelPrefs {
-  email: boolean;
-  inApp: boolean;
+interface NotificationsScreenProps {
+  initialPrefs: NotificationPrefs;
+  email: string;
 }
 
-export function NotificationsScreen() {
-  const [prReady, setPrReady] = useState<ChannelPrefs>({ email: true, inApp: true });
-  const [stuck, setStuck] = useState<ChannelPrefs>({ email: true, inApp: true });
-  const [briefing, setBriefing] = useState<ChannelPrefs>({ email: true, inApp: false });
-  const [everyChange, setEveryChange] = useState(false);
+export function NotificationsScreen({ initialPrefs, email }: NotificationsScreenProps) {
+  const [prefs, setPrefs] = useState<NotificationPrefs>(initialPrefs);
   const [toast, setToast] = useState<string | null>(null);
 
   function showToast(msg: string) {
@@ -22,10 +21,21 @@ export function NotificationsScreen() {
     setTimeout(() => setToast(null), 2400);
   }
 
+  async function update(patch: Partial<NotificationPrefs>) {
+    const next = { ...prefs, ...patch };
+    setPrefs(next);
+    try {
+      await saveNotificationPrefs(next);
+    } catch {
+      setPrefs(prefs);
+      showToast("Could not save. Try again.");
+    }
+  }
+
   return (
     <div className={styles.body}>
       <div className={styles.sectionTitle}>Notifications</div>
-      <div className={styles.lede}>Delivered via email and in-app. Email goes to jordan@gmail.com.</div>
+      <div className={styles.lede}>Delivered via email. In-app delivery is not built yet, this toggle is saved but has no effect.</div>
 
       <div className={styles.triggerList}>
         <Card>
@@ -40,8 +50,8 @@ export function NotificationsScreen() {
               </div>
             </div>
             <div className={styles.toggles}>
-              <Toggle checked={prReady.email} onChange={(v) => setPrReady((p) => ({ ...p, email: v }))} label="Email" />
-              <Toggle checked={prReady.inApp} onChange={(v) => setPrReady((p) => ({ ...p, inApp: v }))} label="In-app" />
+              <Toggle checked={prefs.prReadyEmail} onChange={(v) => update({ prReadyEmail: v })} label="Email" />
+              <Toggle checked={prefs.prReadyInApp} onChange={(v) => update({ prReadyInApp: v })} label="In-app" />
             </div>
           </div>
         </Card>
@@ -58,8 +68,8 @@ export function NotificationsScreen() {
               </div>
             </div>
             <div className={styles.toggles}>
-              <Toggle checked={stuck.email} onChange={(v) => setStuck((p) => ({ ...p, email: v }))} label="Email" />
-              <Toggle checked={stuck.inApp} onChange={(v) => setStuck((p) => ({ ...p, inApp: v }))} label="In-app" />
+              <Toggle checked={prefs.stuckEmail} onChange={(v) => update({ stuckEmail: v })} label="Email" />
+              <Toggle checked={prefs.stuckInApp} onChange={(v) => update({ stuckInApp: v })} label="In-app" />
             </div>
           </div>
         </Card>
@@ -80,8 +90,8 @@ export function NotificationsScreen() {
               </div>
             </div>
             <div className={styles.toggles}>
-              <Toggle checked={briefing.email} onChange={(v) => setBriefing((p) => ({ ...p, email: v }))} label="Email" />
-              <Toggle checked={briefing.inApp} onChange={(v) => setBriefing((p) => ({ ...p, inApp: v }))} label="In-app" />
+              <Toggle checked={prefs.briefingEmail} onChange={(v) => update({ briefingEmail: v })} label="Email" />
+              <Toggle checked={prefs.briefingInApp} onChange={(v) => update({ briefingInApp: v })} label="In-app" />
             </div>
           </div>
         </Card>
@@ -96,7 +106,7 @@ export function NotificationsScreen() {
           </div>
         </div>
         <div className={styles.everyChangeRight}>
-          <Toggle checked={everyChange} onChange={setEveryChange} />
+          <Toggle checked={prefs.everyChange} onChange={(v) => update({ everyChange: v })} />
           <span className={styles.everyChangeNote}>Off by default</span>
         </div>
       </div>
@@ -105,7 +115,7 @@ export function NotificationsScreen() {
         <div className={styles.emailRow}>
           <div>
             <div className={styles.emailLabel}>Email address</div>
-            <div className={styles.emailValue}>jordan@gmail.com</div>
+            <div className={styles.emailValue}>{email}</div>
           </div>
           <button className={styles.changeLink} onClick={() => showToast("Change email: coming soon.")}>
             Change

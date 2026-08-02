@@ -5,14 +5,10 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { StateChip } from "@/components/state/StateChip";
-import { mockTickets, mockAgentRuns } from "@/mock/tickets";
-import { mockRepos } from "@/mock/integrations";
 import { formatRelative } from "@/lib/format";
-import type { TicketRow } from "@/types/db";
+import type { TicketRow, RepoRow } from "@/types/db";
 import type { TicketState } from "@/components/state/types";
 import styles from "./TicketsBoardScreen.module.css";
-
-const NOW = new Date("2026-08-02T14:10:00Z");
 
 type FilterKey = "all" | "action" | "running" | "review" | "done";
 
@@ -59,7 +55,12 @@ function actionFor(state: TicketState): { label: string; variant: "primary" | "g
   }
 }
 
-export function TicketsBoardScreen() {
+interface TicketsBoardScreenProps {
+  initialTickets: TicketRow[];
+  repos: RepoRow[];
+}
+
+export function TicketsBoardScreen({ initialTickets, repos }: TicketsBoardScreenProps) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [search, setSearch] = useState("");
@@ -70,23 +71,28 @@ export function TicketsBoardScreen() {
     setTimeout(() => setToast(null), 2400);
   }
 
-  const needsActionCount = mockTickets.filter((t) => ACTION_STATES.includes(t.state)).length;
+  const needsActionCount = initialTickets.filter((t) => ACTION_STATES.includes(t.state)).length;
 
   const visibleTickets = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return mockTickets
+    return initialTickets
       .filter((t) => matchesFilter(t, activeFilter))
       .filter((t) => !q || t.title.toLowerCase().includes(q));
-  }, [activeFilter, search]);
+  }, [initialTickets, activeFilter, search]);
 
   return (
     <div>
       <PageHeader
         title="Tickets"
         action={
-          <Button variant="primary" onClick={() => showToast("New ticket: coming soon.")}>
-            New ticket
-          </Button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button variant="secondary" onClick={() => router.refresh()}>
+              Refresh
+            </Button>
+            <Button variant="primary" onClick={() => showToast("New ticket: coming soon.")}>
+              New ticket
+            </Button>
+          </div>
         }
       />
 
@@ -141,8 +147,7 @@ export function TicketsBoardScreen() {
             visibleTickets.map((t) => {
               const accent = accentFor(t.state);
               const action = actionFor(t.state);
-              const runs = mockAgentRuns.filter((r) => r.ticket_id === t.id).length;
-              const repo = mockRepos.find((r) => r.id === t.repo_id)?.full_name ?? "–";
+              const repo = repos.find((r) => r.id === t.repo_id)?.full_name ?? "–";
               return (
                 <div key={t.id} className={styles.row} onClick={() => router.push(`/tickets/${t.id}`)}>
                   {accent && <div className={[styles.accent, accent === "risk" ? styles.accentRisk : styles.accentPredict].join(" ")} />}
@@ -158,9 +163,9 @@ export function TicketsBoardScreen() {
                     )}
                   </span>
                   <span className={styles.runs}>
-                    {runs} run{runs === 1 ? "" : "s"}
+                    {t.attempt_count} attempt{t.attempt_count === 1 ? "" : "s"}
                   </span>
-                  <span className={styles.updated}>{formatRelative(t.updated_at, NOW)}</span>
+                  <span className={styles.updated}>{formatRelative(t.updated_at)}</span>
                   <span className={styles.actionCell}>
                     <Button
                       variant={action.variant}

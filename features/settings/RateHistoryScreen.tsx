@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { mockRates, type RateEntry } from "@/mock/rates";
+import { saveRateHistory } from "@/lib/actions/rates";
+import type { RateEntry } from "@/lib/rates";
 import styles from "./RateHistoryScreen.module.css";
 
-export function RateHistoryScreen() {
-  const [rates, setRates] = useState<RateEntry[]>(mockRates);
+interface RateHistoryScreenProps {
+  initialRates: RateEntry[];
+}
+
+export function RateHistoryScreen({ initialRates }: RateHistoryScreenProps) {
+  const [rates, setRates] = useState<RateEntry[]>(initialRates);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
   const [newCategory, setNewCategory] = useState("");
@@ -17,24 +22,44 @@ export function RateHistoryScreen() {
     setTimeout(() => setToast(null), 2400);
   }
 
+  async function persist(next: RateEntry[], previous: RateEntry[]) {
+    setRates(next);
+    try {
+      await saveRateHistory(next);
+    } catch {
+      setRates(previous);
+      showToast("Could not save. Try again.");
+    }
+  }
+
   function updateRate(id: string, rate: string) {
     setRates((rs) => rs.map((r) => (r.id === id ? { ...r, rate } : r)));
   }
 
   function confirmRow(id: string) {
-    setRates((rs) => rs.map((r) => (r.id === id ? { ...r, kind: "fact" } : r)));
+    const next = rates.map((r) => (r.id === id ? { ...r, kind: "fact" as const } : r));
+    persist(next, rates);
     showToast("Rate confirmed.");
   }
 
   function removeRow(id: string) {
-    setRates((rs) => rs.filter((r) => r.id !== id));
+    persist(
+      rates.filter((r) => r.id !== id),
+      rates
+    );
+  }
+
+  function saveEdit() {
+    persist(rates, rates);
+    setEditingId(null);
   }
 
   function saveNewRow() {
     const category = newCategory.trim();
     const rate = newRate.trim();
     if (!category || !rate) return;
-    setRates((rs) => [...rs, { id: `a${Date.now()}`, category, source: "Added manually", rate, kind: "fact" }]);
+    const next = [...rates, { id: `a${Date.now()}`, category, source: "Added manually", rate, kind: "fact" as const }];
+    persist(next, rates);
     setAddingNew(false);
     setNewCategory("");
     setNewRate("");
@@ -76,7 +101,7 @@ export function RateHistoryScreen() {
               />
               <span />
               <div className={styles.editLinks}>
-                <button className={styles.editLink} style={{ color: "var(--signal)" }} onClick={() => setEditingId(null)}>
+                <button className={styles.editLink} style={{ color: "var(--signal)" }} onClick={saveEdit}>
                   Save
                 </button>
                 <button className={styles.editLink} style={{ color: "var(--ink-3)" }} onClick={() => setEditingId(null)}>

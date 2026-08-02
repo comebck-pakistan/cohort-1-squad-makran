@@ -11,6 +11,8 @@ export const mockProposals: ProposalRow[] = [
     body: "Hi Priya, I've rebuilt checkout flows for three Shopify Plus stores in the last year...",
     sent_at: "2026-07-31T10:00:00Z",
     outcome_reason: null,
+    resolved_at: null,
+    embedding: null,
     created_at: "2026-07-31T09:30:00Z",
   },
   {
@@ -23,6 +25,8 @@ export const mockProposals: ProposalRow[] = [
     body: "Hi team, your Stripe + internal ledger sync sounds like a great fit...",
     sent_at: "2026-07-26T10:00:00Z",
     outcome_reason: "Selected on merit",
+    resolved_at: "2026-07-28T16:00:00Z",
+    embedding: null,
     created_at: "2026-07-26T09:00:00Z",
   },
   {
@@ -35,6 +39,8 @@ export const mockProposals: ProposalRow[] = [
     body: "Hi Thorn team, I'd love to help bring the new mobile flows to life...",
     sent_at: "2026-07-19T10:00:00Z",
     outcome_reason: "Price too high",
+    resolved_at: "2026-07-22T11:00:00Z",
+    embedding: null,
     created_at: "2026-07-19T09:00:00Z",
   },
   {
@@ -47,6 +53,8 @@ export const mockProposals: ProposalRow[] = [
     body: "Survey-fallback draft: not enough past-proposal history to draft in your voice yet.",
     sent_at: null,
     outcome_reason: null,
+    resolved_at: null,
+    embedding: null,
     created_at: "2026-08-01T12:00:00Z",
   },
   {
@@ -59,6 +67,8 @@ export const mockProposals: ProposalRow[] = [
     body: "Hi Marcus, 3 months of backend work sounds like a great fit given my recent Node/Postgres projects...",
     sent_at: null,
     outcome_reason: null,
+    resolved_at: null,
+    embedding: null,
     created_at: "2026-08-01T15:20:00Z",
   },
 ];

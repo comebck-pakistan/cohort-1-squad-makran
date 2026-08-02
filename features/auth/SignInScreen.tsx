@@ -3,20 +3,66 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { SocialAuthButtons } from "./SocialAuthButtons";
 import { OtpCodeInput } from "./OtpCodeInput";
 import styles from "./AuthCard.module.css";
 
 export function SignInScreen() {
   const router = useRouter();
+  const supabase = createClient();
   const [stage, setStage] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState<string[]>(["", "", "", "", ""]);
+  const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
   const [toast, setToast] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(null), 2400);
+  }
+
+  async function handleOAuth(provider: "google" | "github") {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) showToast(error.message);
+  }
+
+  async function sendCode() {
+    if (!email.trim()) {
+      showToast("Enter an email address first.");
+      return;
+    }
+    setSending(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    });
+    setSending(false);
+    if (error) {
+      showToast(error.message);
+      return;
+    }
+    setStage("code");
+  }
+
+  async function verifyCode() {
+    setVerifying(true);
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: code.join(""),
+      type: "email",
+    });
+    setVerifying(false);
+    if (error) {
+      showToast(error.message);
+      return;
+    }
+    showToast("Signed in.");
+    router.push("/home");
   }
 
   const complete = code.every((d) => d.length === 1);
@@ -33,8 +79,8 @@ export function SignInScreen() {
           <SocialAuthButtons
             googleLabel="Continue with Google"
             githubLabel="Continue with GitHub"
-            onGoogle={() => showToast("Continuing with Google…")}
-            onGithub={() => showToast("Continuing with GitHub…")}
+            onGoogle={() => handleOAuth("google")}
+            onGithub={() => handleOAuth("github")}
           />
 
           <div className={styles.orRow}>
@@ -52,20 +98,11 @@ export function SignInScreen() {
             onChange={(e) => setEmail(e.target.value)}
           />
 
-          <button
-            className={styles.primaryButton}
-            onClick={() => {
-              if (!email.trim()) {
-                showToast("Enter an email address first.");
-                return;
-              }
-              setStage("code");
-            }}
-          >
-            Send code →
+          <button className={styles.primaryButton} onClick={sendCode} disabled={sending}>
+            {sending ? "Sending…" : "Send code →"}
           </button>
 
-          <div className={styles.helperText}>No password needed. We&rsquo;ll email you a 5-digit code.</div>
+          <div className={styles.helperText}>No password needed. We&rsquo;ll email you a 6-digit code.</div>
 
           <div className={styles.divider} />
 
@@ -75,7 +112,7 @@ export function SignInScreen() {
         </>
       ) : (
         <>
-          <div className={styles.codeSentTo}>We sent a 5-digit code to</div>
+          <div className={styles.codeSentTo}>We sent a 6-digit code to</div>
           <div className={styles.codeEmail}>{email}</div>
           <div className={styles.changeEmailWrap}>
             <button className={styles.changeEmailLink} onClick={() => setStage("email")}>
@@ -88,20 +125,15 @@ export function SignInScreen() {
 
           <button
             className={styles.primaryButton}
-            disabled={!complete}
-            onClick={() => {
-              if (complete) {
-                showToast("Signed in.");
-                router.push("/home");
-              }
-            }}
+            disabled={!complete || verifying}
+            onClick={verifyCode}
           >
-            Sign in
+            {verifying ? "Signing in…" : "Sign in"}
           </button>
 
           <div className={styles.resendNote}>
             Code expires in 10 minutes ·{" "}
-            <button className={styles.resendLink} onClick={() => showToast(`Code resent to ${email}.`)}>
+            <button className={styles.resendLink} onClick={sendCode}>
               Resend code
             </button>
           </div>
