@@ -55,7 +55,7 @@ M5  Agent Runtime (Inngest steps + GitHub API + PR flow)                   : cod
 M6  Insights Dashboard (pure DB aggregation, no LLM)                       : DONE (local, verified against hand-seeded proposals) [was M8]
 M7  Notifications (Inngest scheduled + Nodemailer)                        : DONE (local, all 3 triggers + opt-in verified via staged test) [was M9]
       ↑ web app (frontend + backend) fully running end-to-end here ↑
-M8  Chrome extension screens 19–25, build against mock data                [was M2]: designs DONE, build not started
+M8  Chrome extension screens 19–25, build against mock data                [was M2]: DONE (mock data, Plasmo project scaffolded)
 M9  Explain the Client (real data: extension content script → LLM → cache) [was M4], depends on M8
 M10 Hardening pass (error states, empty states, rate limits, monitoring)   : covers M2–M9
 ```
@@ -152,7 +152,7 @@ Also: since no error states existed yet (Section 6 open question), an error/empt
 
 ### 7. M4 — Meetings pipeline *(was M6)*
 
-**Status: DONE (local Supabase + Inngest dev server; Recall.ai code-complete, unverified).**
+**Status: DONE (local Supabase + Inngest dev server; Recall.ai code-complete, unverified). User explicitly chose to skip Recall.ai E2E verification on 2026-08-02 (Recall.ai requires a business email to sign up, not available), same "code-complete, deferred" pattern as M5's GitHub E2E.**
 
 **Scope, as built**
 - pgvector-adjacent schema addition: `meetings.transcript_text` column (nullable), discovered mid-build, see deviations below.
@@ -174,7 +174,7 @@ Also: since no error states existed yet (Section 6 open question), an error/empt
 - Local Mailpit SMTP wasn't reachable from the host (only its web UI port was mapped). Uncommented `smtp_port = 54325` in `supabase/config.toml` so Nodemailer can reach it locally, same pattern Auth's own OTP emails already used.
 - Recall.ai has no local/mock substitute: `scheduleBotMeeting` and the webhook receiver are built against Recall's documented API but unverified against a real account. The manual-paste path was used for all real end-to-end verification instead.
 
-**Exit criteria, verified (manual-paste path):** a real test meeting (pasted transcript) flows `processing → ready`, produces correct, genuinely actionable draft tickets (verified against a scripted test transcript), and "Confirm & create tickets" correctly promotes them into real `backlog` tickets. A known-client meeting (seeded test client/contact, since real Clients data doesn't exist until M9) correctly fires the pre-meeting briefing email at the 15-minute mark, with real cached verdict/price-band/proposal data, to the freelancer's own inbox. The `in_progress → processing → ready` bot-recall path is code-complete but unverified, blocked on a real Recall.ai account.
+**Exit criteria, verified (manual-paste path):** a real test meeting (pasted transcript) flows `processing → ready`, produces correct, genuinely actionable draft tickets (verified against a scripted test transcript), and "Confirm & create tickets" correctly promotes them into real `backlog` tickets. A known-client meeting (seeded test client/contact, since real Clients data doesn't exist until M9) correctly fires the pre-meeting briefing email at the 15-minute mark, with real cached verdict/price-band/proposal data, to the freelancer's own inbox. The `in_progress → processing → ready` bot-recall path is code-complete but unverified, blocked on a real Recall.ai account (needs a business email to sign up); user explicitly chose to skip this verification (2026-08-02) and move to M8, code is otherwise believed correct pending that real-world check.
 
 ---
 
@@ -249,13 +249,24 @@ Also: since no error states existed yet (Section 6 open question), an error/empt
 
 ### 11. M8 — Chrome extension screens (19–25) *(was M2)*
 
-**Status: designs DONE, build not started.** All 7 Claude Design mockups exist and are verified in `web-designs/` (`Extension Client Full Analysis`, `Extension Client Low Confidence`, `Extension Client Insufficient Data`, `Extension Proposal In-Voice Draft`, `Extension Proposal Survey Fallback`, `Extension Insights Compact Dashboard`, `Extension Utility States`). The Plasmo project itself has not been scaffolded and none of the 7 screens have been built yet; that work is now deferred until the web app (M2–M7) is complete, per the reordering above.
+**Status: ✅ DONE (mock data, Plasmo project scaffolded).**
 
-**Scope:** scaffold the Plasmo extension project and build all 7 screens against mock data, matching the web app's shared primitives where reusable (state chips, epistemic grammar rows) — consider a shared `packages/ui` if using a monorepo, or a copied/synced component set if not (decide based on how much divergence the 380px popup constraint forces).
+**Scope, as built**
+- `extension/` is a standalone Plasmo project (own `package.json`, own `node_modules`, not part of the Next.js app's build), targeting `chrome-mv3`. Single entry point `extension/src/popup.tsx`, no content script or background script yet (out of scope until M9's real Upwork scraping).
+- Shared primitives were **copied**, not monorepo-shared: `styles/tokens.css` and four components (`Button`, `VerdictBadge`, `PriceBand`, `HumanGateBar`) were copied verbatim from the web app's `components/` into `extension/src/components/` and `extension/src/styles/tokens.css`. The popup's own layout (header, tabs, signal rows, cards) is new code in `extension/src/components/PopupShell.tsx` and per-screen files under `extension/src/screens/`, since the 380px popup constraint makes the layout different enough from any existing web screen that adapting one would be more code than writing it directly, matching the build-plan's own "decide based on divergence" guidance.
+- Fonts: `next/font` isn't available outside a Next.js build, so the same three families (Space Grotesk, IBM Plex Sans, IBM Plex Mono) are self-hosted via `@fontsource/*` packages instead (`extension/src/styles/fonts.css`), no external network font requests at runtime (important for an extension's CSP).
+- Mock data lives in `extension/src/mock/{client,proposal,insights}.ts`, one object per scenario variant, shaped closely after each design mockup's actual copy (job titles, dollar figures, signal labels) rather than placeholder text.
+- All 7 designed screens built: Client tab (full/low/insufficient confidence variants), Proposal tab (in-voice/survey-fallback variants), Insights tab (compact dashboard with EXAMPLE DATA watermark), and the 3 utility states (signed-out, loading, not-on-job-page).
+- A small "MOCK SCENARIO" dev switcher bar (`extension/src/popup.tsx`'s `DevScenarioSwitcher`) lets every state be selected directly, since there's no real data source yet to drive state transitions organically, the same reason M1's mock web screens needed explicit per-state handling.
 
-**Exclusions:** no real Upwork DOM scraping yet, no real LLM calls.
+**Exclusions:** no real Upwork DOM scraping (no content script exists yet). No real LLM calls, no chrome.* storage/auth calls, everything is local React state. No shared monorepo package, primitives are a copied/synced set per the build-plan's own allowed alternative.
 
-**Exit criteria:** extension popup navigable through all states (signed-out, loading, not-on-job-page, full/low/insufficient confidence, in-voice/survey-fallback proposal, insights tab) with mock data.
+**Discovered during build:**
+- Plasmo expects entry points inside `src/` once a `src/` directory exists at the project root (not at the project root itself), confirmed via Plasmo's own README ("avoid putting source code in your root directory by putting them in a `src` sub-directory"). `popup.tsx` was placed at `extension/src/popup.tsx` accordingly.
+- No app icon graphic exists anywhere in the design assets (only the "Agentic OS" text wordmark), Plasmo's build fails without one. Generated a simple placeholder 512×512 PNG (`--signal` colored square with a white "A") via ImageMagick at `extension/assets/icon.png`; a real icon design is a fair thing to revisit later but wasn't blocking for a mock-data milestone.
+- CSS Modules need an ambient type declaration outside Next.js (`*.module.css` has no built-in types), added `extension/src/global.d.ts`.
+
+**Exit criteria, verified 2026-08-03:** `npx tsc --noEmit` and `npx plasmo build` both clean. Since this milestone's popup makes no `chrome.*` API calls yet, the built `build/chrome-mv3-prod/popup.html` was served over a plain local HTTP server and driven directly in-browser (loading it as an unpacked extension would additionally require a native OS file-picker step that isn't automatable): confirmed all 9 states render with the correct mock content and matching visuals against the design mockups, signed-out, loading, not-on-job-page, client full/low/insufficient confidence, proposal in-voice/survey-fallback, and the insights compact dashboard, cycling through the dev scenario switcher and the Client/Proposal/Insights tabs.
 
 ---
 
