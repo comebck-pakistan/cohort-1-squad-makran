@@ -1,6 +1,7 @@
 // Generated via `npx supabase gen types typescript --local`. Do not hand-edit;
 // re-run that command after changing anything in supabase/migrations and
 // paste the output back in here (skip its first `import` line, if any).
+
 export type Json =
   | string
   | number
@@ -269,6 +270,7 @@ export type Database = {
           in_voice: boolean
           outcome_reason: string | null
           owner_id: string
+          resolved_at: string | null
           sent_at: string | null
           state: string
           title: string
@@ -282,6 +284,7 @@ export type Database = {
           in_voice?: boolean
           outcome_reason?: string | null
           owner_id: string
+          resolved_at?: string | null
           sent_at?: string | null
           state?: string
           title: string
@@ -295,6 +298,7 @@ export type Database = {
           in_voice?: boolean
           outcome_reason?: string | null
           owner_id?: string
+          resolved_at?: string | null
           sent_at?: string | null
           state?: string
           title?: string

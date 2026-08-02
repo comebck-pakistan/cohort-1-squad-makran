@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Toggle } from "@/components/ui/Toggle";
 import { StateChip } from "@/components/state/StateChip";
-import { mockProposals } from "@/mock/proposals";
+import { computeInsights } from "@/lib/insights";
+import type { ProposalRow } from "@/types/db";
 import styles from "./InsightsDashboardScreen.module.css";
 
 const RESOLVED_THRESHOLD = 10;
@@ -29,8 +30,25 @@ const EXAMPLE_OUTCOMES = [
   { proposal: "CMS integration", state: "lost" as const, reason: "No response" },
   { proposal: "Auth refactor", state: "won" as const, reason: "Selected on merit" },
 ];
+const EXAMPLE_TREND = [
+  ["Mar", 25],
+  ["Apr", 30],
+  ["May", 33],
+  ["Jun", 42],
+  ["Aug", 38],
+] as const;
 
-export function InsightsDashboardScreen() {
+interface InsightsDashboardScreenProps {
+  initialProposals: ProposalRow[];
+}
+
+function trendPoints(trend: { label: string; winRate: number }[]): string {
+  if (trend.length < 2) return "";
+  const stepX = 760 / (trend.length - 1);
+  return trend.map((t, i) => `${i * stepX},${190 - (t.winRate / 100) * 180}`).join(" ");
+}
+
+export function InsightsDashboardScreen({ initialProposals }: InsightsDashboardScreenProps) {
   const [exampleData, setExampleData] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -39,11 +57,7 @@ export function InsightsDashboardScreen() {
     setTimeout(() => setToast(null), 2600);
   }
 
-  const sent = mockProposals.filter((p) => p.state !== "draft");
-  const resolved = mockProposals.filter((p) => p.state === "won" || p.state === "lost");
-  const won = mockProposals.filter((p) => p.state === "won");
-  const pending = mockProposals.filter((p) => p.state === "sent");
-  const winRate = resolved.length > 0 ? Math.round((won.length / resolved.length) * 100) : null;
+  const stats = useMemo(() => computeInsights(initialProposals), [initialProposals]);
 
   const statColor = exampleData ? "var(--ink-3)" : "var(--ink)";
   const verifiedColor = exampleData ? "var(--ink-3)" : "var(--verified)";
@@ -51,7 +65,9 @@ export function InsightsDashboardScreen() {
 
   const hint = exampleData
     ? "Real data will replace this automatically once you resolve 10 proposals."
-    : `Example data auto-hides after ${RESOLVED_THRESHOLD} resolved proposals · you have ${resolved.length} resolved, ${RESOLVED_THRESHOLD - resolved.length} more to go.`;
+    : `Example data auto-hides after ${RESOLVED_THRESHOLD} resolved proposals · you have ${stats.resolvedCount} resolved, ${Math.max(RESOLVED_THRESHOLD - stats.resolvedCount, 0)} more to go.`;
+
+  const realTrendLine = trendPoints(stats.winRateTrend);
 
   return (
     <div>
@@ -87,7 +103,7 @@ export function InsightsDashboardScreen() {
           <Card>
             <div className={styles.statEyebrow}>Proposals sent</div>
             <div className={styles.statValue} style={{ color: statColor }}>
-              {exampleData ? 24 : sent.length}
+              {exampleData ? 24 : stats.sentCount}
             </div>
             <div className={styles.statSub}>last 90 days</div>
             {exampleData && <div className={styles.statExample}>EXAMPLE</div>}
@@ -95,27 +111,27 @@ export function InsightsDashboardScreen() {
           <Card>
             <div className={styles.statEyebrow}>Win rate</div>
             <div className={styles.statValue} style={{ color: verifiedColor }}>
-              {exampleData ? "38%" : winRate !== null ? `${winRate}%` : "–"}
+              {exampleData ? "38%" : stats.winRate !== null ? `${stats.winRate}%` : "–"}
             </div>
             <div className={styles.statSub}>
-              {exampleData ? "9 won of 24 resolved" : `${won.length} won of ${resolved.length} resolved`}
+              {exampleData ? "9 won of 24 resolved" : `${stats.wonCount} won of ${stats.resolvedCount} resolved`}
             </div>
             {exampleData && <div className={styles.statExample}>EXAMPLE</div>}
           </Card>
           <Card>
             <div className={styles.statEyebrow}>Avg time to close</div>
             <div className={styles.statValue} style={{ color: statColor }}>
-              {exampleData ? "4.2d" : resolved.length >= 3 ? "–" : "–"}
+              {exampleData ? "4.2d" : stats.avgTimeToCloseDays !== null ? `${stats.avgTimeToCloseDays}d` : "–"}
             </div>
             <div className={styles.statSub}>
-              {exampleData ? "sent → won/lost" : "not enough history yet: no estimate shown"}
+              {exampleData ? "sent → won/lost" : stats.avgTimeToCloseDays !== null ? "sent → won/lost" : "not enough history yet: no estimate shown"}
             </div>
             {exampleData && <div className={styles.statExample}>EXAMPLE</div>}
           </Card>
           <Card>
             <div className={styles.statEyebrow}>Pending</div>
             <div className={styles.statValue} style={{ color: predictColor }}>
-              {exampleData ? 6 : pending.length}
+              {exampleData ? 6 : stats.pendingCount}
             </div>
             <div className={styles.statSub}>awaiting response</div>
             {exampleData && <div className={styles.statExample}>EXAMPLE</div>}
@@ -165,11 +181,53 @@ export function InsightsDashboardScreen() {
                       ))}
                     </div>
                   </>
-                ) : (
+                ) : stats.wonReasons.length === 0 && stats.lostReasons.length === 0 ? (
                   <div className={styles.emptyNote}>
                     Not enough resolved proposals yet for a reason breakdown. Capture an outcome on
                     a won or lost proposal to start building this out.
                   </div>
+                ) : (
+                  <>
+                    {stats.wonReasons.length > 0 && (
+                      <>
+                        <div className={[styles.reasonGroupLabel, styles.reasonGroupWon].join(" ")}>Won</div>
+                        <div className={styles.reasonList}>
+                          {stats.wonReasons.map((r) => (
+                            <div key={r.label} className={styles.reasonRow}>
+                              <span className={styles.reasonLabel}>{r.label}</span>
+                              <div className={styles.reasonTrack}>
+                                <div className={styles.reasonFillWon} style={{ width: `${r.pct}%` }} />
+                              </div>
+                              <span className={styles.reasonCount}>
+                                {r.count} · {r.pct}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {stats.wonReasons.length > 0 && stats.lostReasons.length > 0 && (
+                      <div className={styles.reasonDivider} />
+                    )}
+                    {stats.lostReasons.length > 0 && (
+                      <>
+                        <div className={[styles.reasonGroupLabel, styles.reasonGroupLost].join(" ")}>Lost</div>
+                        <div className={styles.reasonList} style={{ marginBottom: 0 }}>
+                          {stats.lostReasons.map((r) => (
+                            <div key={r.label} className={styles.reasonRow}>
+                              <span className={styles.reasonLabel}>{r.label}</span>
+                              <div className={styles.reasonTrack}>
+                                <div className={styles.reasonFillLost} style={{ width: `${r.pct}%` }} />
+                              </div>
+                              <span className={styles.reasonCount}>
+                                {r.count} · {r.pct}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
                 )}
               </Card>
             </div>
@@ -195,12 +253,12 @@ export function InsightsDashboardScreen() {
                       </div>
                     </div>
                   ))
-                ) : resolved.length === 0 ? (
+                ) : stats.recentOutcomes.length === 0 ? (
                   <div className={styles.emptyNote}>
                     No resolved proposals yet. Turn on example data to preview the dashboard.
                   </div>
                 ) : (
-                  resolved.map((p) => (
+                  stats.recentOutcomes.map((p) => (
                     <div key={p.id} className={styles.outcomeRow}>
                       <span className={styles.outcomeTitle}>{p.title}</span>
                       <div className={styles.outcomeMeta}>
@@ -245,17 +303,41 @@ export function InsightsDashboardScreen() {
                     ))}
                   </svg>
                   <div className={styles.chartAxis}>
-                    {["Mar · 25%", "Apr · 30%", "May · 33%", "Jun · 42%", "Aug · 38%"].map((l) => (
-                      <span key={l} className={styles.chartAxisLabel}>
-                        {l}
+                    {EXAMPLE_TREND.map(([label, wr]) => (
+                      <span key={label} className={styles.chartAxisLabel}>
+                        {label} · {wr}%
                       </span>
                     ))}
                   </div>
                 </>
-              ) : (
+              ) : stats.winRateTrend.length < 2 ? (
                 <div className={styles.emptyNote}>
                   Not enough resolved proposals yet to chart a trend: no estimate shown.
                 </div>
+              ) : (
+                <>
+                  <svg viewBox="0 0 760 220" width="100%" height="220" preserveAspectRatio="none">
+                    <line x1="0" y1="10" x2="760" y2="10" stroke="var(--border)" strokeWidth="1" />
+                    <line x1="0" y1="70" x2="760" y2="70" stroke="var(--border)" strokeWidth="1" />
+                    <line x1="0" y1="130" x2="760" y2="130" stroke="var(--border)" strokeWidth="1" />
+                    <line x1="0" y1="190" x2="760" y2="190" stroke="var(--border)" strokeWidth="1" />
+                    <polygon points={`${realTrendLine} 760,190 0,190`} fill="var(--signal-tint)" />
+                    <polyline points={realTrendLine} fill="none" stroke="var(--signal)" strokeWidth="2.5" />
+                    {stats.winRateTrend.map((t, i) => {
+                      const stepX = 760 / (stats.winRateTrend.length - 1);
+                      return (
+                        <circle key={i} cx={i * stepX} cy={190 - (t.winRate / 100) * 180} r="4" fill="var(--signal)" />
+                      );
+                    })}
+                  </svg>
+                  <div className={styles.chartAxis}>
+                    {stats.winRateTrend.map((t) => (
+                      <span key={t.label} className={styles.chartAxisLabel}>
+                        {t.label} · {t.winRate}%
+                      </span>
+                    ))}
+                  </div>
+                </>
               )}
             </Card>
           </div>

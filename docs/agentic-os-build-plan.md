@@ -51,8 +51,8 @@ M1  All web screens built against mock data (1–18 + Proposals/Clients)     : D
 M2  Supabase schema, RLS, auth (OTP + Google + GitHub OAuth)               : DONE (local, all 3 auth methods verified) [was M3]
 M3  Proposal Drafter (pgvector embeddings + retrieval + generation)        : DONE (local, OpenAI embeddings + gpt-5-nano) [was M5]
 M4  Meetings pipeline (Recall.ai + Inngest + ticketization)                : DONE (manual-paste path verified local; Recall.ai code-complete, unverified, no account) [was M6]
-M5  Agent Runtime (Inngest steps + GitHub API + PR flow)                   : code-complete, pending verification (needs GITHUB_TOKEN + test repo) [was M7]
-M6  Insights Dashboard (pure DB aggregation, no LLM)                       [was M8]
+M5  Agent Runtime (Inngest steps + GitHub API + PR flow)                   : code-complete, E2E verification skipped by user decision (needs GITHUB_TOKEN + test repo, deferred) [was M7]
+M6  Insights Dashboard (pure DB aggregation, no LLM)                       : DONE (local, verified against hand-seeded proposals) [was M8]
 M7  Notifications (Inngest scheduled + Nodemailer)                        [was M9]
       ↑ web app (frontend + backend) fully running end-to-end here ↑
 M8  Chrome extension screens 19–25, build against mock data                [was M2]: designs DONE, build not started
@@ -180,7 +180,7 @@ Also: since no error states existed yet (Section 6 open question), an error/empt
 
 ### 8. M5 — Agent Runtime *(was M7)*
 
-**Status: code-complete, pending verification (local Supabase + Inngest dev server; needs a real `GITHUB_TOKEN` and a real test repo to exercise end-to-end, same as M4's Recall.ai caveat).**
+**Status: code-complete. `tsc`/`eslint`/`npm run build` all clean; UI verified in browser (auth, empty Tickets board matches empty DB, Settings, Integrations connect-repo flow fails gracefully with "GITHUB_TOKEN is not set" when unconfigured). Real E2E run (plan→approve→execute→PR→review→merge, plus the 3-attempt retry-cap case) deferred by explicit user decision on 2026-08-02, still needs a real `GITHUB_TOKEN` and a real test repo, same as M4's Recall.ai caveat.**
 
 **Scope, as built**
 - A single `inngest/functions/agent-run.ts` implementing the whole plan/approve/execute/review loop as one durable function, up to 3 attempts in a `for` loop: `step.run("plan-N")` (generate) then `step.waitForEvent("plan-decision-N", {match: "data.ticketId"})`, then on approval `step.run("execute-N")` (branch, LLM-generated file changes, commit via GitHub Contents API), a bounded `step.run`/`step.sleep` poll loop against GitHub's check-runs API, `step.run("open-pr-N")`, then `step.waitForEvent("review-decision-N")`. Plan-decision and review-decision events are both sent by real server actions (`submitPlanDecision`, `submitReviewDecision`) triggered from the Ticket detail screen's approve/reject buttons.
@@ -203,17 +203,25 @@ Also: since no error states existed yet (Section 6 open question), an error/empt
 - Added `agent_runs.log` (jsonb, default `[]`), the live console needs somewhere to persist growing step-by-step log lines across a durable, replayable Inngest function; each log-append step reads the current DB value, appends, and writes back (self-contained per step) rather than relying on in-memory accumulation, which Inngest's step-memoization would silently break on replay.
 - No Supabase Realtime wiring: `router.refresh()` polling every 4s during `agent_running`/`executing` was simpler than setting up a Realtime channel and adequate for how fast this loop actually moves.
 
-**Exit criteria, to verify:** a real ticket, assigned against a real connected GitHub test repo, correctly generates a plan, gates at plan approval, executes (branch + commit with `Agentic OS Agent <agent@agentcos.dev>` as both author and committer, confirmed via the GitHub commit's API response), gates again at PR review, and merges on approval. A second ticket against a repo with a workflow that always fails on `pull_request` correctly loops three times and lands on `needs_human`, with `agent_runs` showing 3 attempt rows and the ticket's `attempt_count` at 3. Blocked on the user providing `GITHUB_TOKEN` and a real test repo (with a deliberately-failing workflow for the retry-cap case).
+**Exit criteria, deferred (not verified):** a real ticket, assigned against a real connected GitHub test repo, correctly generates a plan, gates at plan approval, executes (branch + commit with `Agentic OS Agent <agent@agentcos.dev>` as both author and committer, confirmed via the GitHub commit's API response), gates again at PR review, and merges on approval. A second ticket against a repo with a workflow that always fails on `pull_request` correctly loops three times and lands on `needs_human`, with `agent_runs` showing 3 attempt rows and the ticket's `attempt_count` at 3. Blocked on the user providing `GITHUB_TOKEN` and a real test repo (with a deliberately-failing workflow for the retry-cap case); user explicitly chose to skip this verification for now (2026-08-02) and move to M6, code is otherwise believed correct pending that real-world check.
 
 ---
 
 ### 9. M6 — Insights Dashboard *(was M8)*
 
-**Status: not started.**
+**Status: ✅ DONE (local Supabase).**
 
-**Scope:** pure DB aggregation (win/loss patterns, outcome reasons) — no LLM involved, per the handoff. Outcome capture modal (already designed, Screen 13) wired to real writes. Example-data-ON state (Screen 12b) correctly toggles based on the 10-proposal threshold.
+**Scope, as built**
+- `lib/insights.ts`: pure function `computeInsights(proposals, now)`, no LLM, no DB access, over the caller's own `ProposalRow[]`. Computes proposals-sent (last 90 days, by `sent_at`), win rate, avg time to close, pending count, won/lost reason breakdowns, recent outcomes (sorted by `resolved_at` desc), and a monthly win-rate trend, all with "no history, no estimate" (`null`/empty, never fabricated).
+- `features/insights/InsightsDashboardScreen.tsx` now takes `initialProposals: ProposalRow[]` instead of importing `mockProposals` directly, real numbers flow through `computeInsights`. Example-data toggle (10-resolved threshold, unchanged from M1) and its hatch-overlay/EXAMPLE DATA styling untouched.
+- `app/(app)/insights/page.tsx` is now an async server component: `listProposals(supabase)` → `InsightsDashboardScreen`.
+- Outcome Capture modal (Screen 13) was **already** wired to real writes as of M3 (`markProposalOutcome` server action, `lib/actions/proposals.ts`), no changes needed there beyond the `resolved_at` stamp below.
 
-**Exit criteria:** dashboard numbers are verifiably correct against seed data you construct by hand (this is the one place you can fully unit-test the aggregation logic).
+**Discovered during build:**
+- No timestamp existed anywhere to compute "avg time to close" or "win rate over time" (only `sent_at` and `created_at` existed, no resolution timestamp). Added `proposals.resolved_at` (timestamptz, migration `20260802180500_proposals_resolved_at.sql`), stamped by `markProposalOutcome` at the same time as `state`/`outcome_reason`. Both stats correctly show "–" / an explicit no-estimate empty state when no resolved proposals have both `sent_at` and `resolved_at` yet, consistent with the rest of the app's "never fabricate" rule.
+- `OutcomeCaptureModal`'s `notes`/`date` fields are captured in local component state but never persisted (no DB columns for them, `confirmOutcome` in `ProposalsListScreen.tsx` only forwards `reason`) — a pre-existing gap from M3, not touched here, out of this milestone's "pure aggregation" scope.
+
+**Exit criteria, verified 2026-08-02:** hand-seeded 6 real `proposals` rows via direct SQL (1 draft, 1 sent/pending, 3 won, 1 lost, spanning two calendar months) under the signed-in test account, confirmed every dashboard number by hand (sent count, win rate, avg time to close, reason-breakdown percentages, recent-outcomes ordering, and the monthly win-rate trend chart) matched the UI exactly, then deleted the seed rows. Empty state (0 real proposals) and the Example-data toggle both verified separately in the same session. `tsc`/`eslint`/`npm run build` all clean.
 
 ---
 

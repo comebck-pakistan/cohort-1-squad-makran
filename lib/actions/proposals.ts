@@ -38,6 +38,7 @@ export async function importPastProposals(
       body: item.text,
       sent_at: null,
       outcome_reason: null,
+      resolved_at: null,
       embedding,
     });
   }
@@ -92,6 +93,7 @@ export async function requestProposalDraft(input: RequestDraftInput): Promise<Pr
     body: result.body,
     sent_at: null,
     outcome_reason: null,
+    resolved_at: null,
     embedding: null,
   });
 }
@@ -108,7 +110,11 @@ export async function markProposalOutcome(
   outcomeReason: ProposalRow["outcome_reason"]
 ): Promise<ProposalRow> {
   const { supabase } = await requireOwnerId();
-  return updateProposal(supabase, proposalId, { state: outcome, outcome_reason: outcomeReason });
+  return updateProposal(supabase, proposalId, {
+    state: outcome,
+    outcome_reason: outcomeReason,
+    resolved_at: new Date().toISOString(),
+  });
 }
 
 export async function fetchProposals(): Promise<ProposalRow[]> {
