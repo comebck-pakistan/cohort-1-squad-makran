@@ -1,4 +1,4 @@
-import { inngest } from "@/inngest/client";
+import { inngest, type MeetingConfirmed } from "@/inngest/client";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendEmail } from "@/lib/mail";
 import { formatDateTime } from "@/lib/format";
@@ -9,10 +9,9 @@ import { formatDateTime } from "@/lib/format";
  * open question (no real data source yet), so it's left out of the real email rather than faked.
  */
 export const preMeetingBriefing = inngest.createFunction(
-  { id: "pre-meeting-briefing" },
-  { event: "meeting/confirmed" },
+  { id: "pre-meeting-briefing", triggers: [{ event: "meeting/confirmed" }] },
   async ({ event, step }) => {
-    const { meetingId } = event.data;
+    const { meetingId } = event.data as MeetingConfirmed;
     const supabase = createServiceClient();
 
     const meeting = await step.run("load-meeting", async () => {

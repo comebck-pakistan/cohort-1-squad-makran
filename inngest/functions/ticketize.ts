@@ -1,14 +1,13 @@
-import { inngest } from "@/inngest/client";
+import { inngest, type MeetingReadyForProcessing } from "@/inngest/client";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ticketizeTranscript } from "@/lib/llm/ticketize";
 import { transcribeAudio } from "@/lib/llm/whisper";
 import { getRecallTranscript, getRecallRecordingUrl } from "@/lib/recall";
 
 export const ticketizeMeeting = inngest.createFunction(
-  { id: "ticketize-meeting" },
-  { event: "meeting/ready-for-processing" },
+  { id: "ticketize-meeting", triggers: [{ event: "meeting/ready-for-processing" }] },
   async ({ event, step }) => {
-    const { meetingId, transcript: providedTranscript } = event.data;
+    const { meetingId, transcript: providedTranscript } = event.data as MeetingReadyForProcessing;
     const supabase = createServiceClient();
 
     const meeting = await step.run("load-meeting", async () => {
@@ -53,7 +52,12 @@ export const ticketizeMeeting = inngest.createFunction(
     await step.run("save-draft-tickets", async () => {
       await supabase
         .from("meetings")
-        .update({ draft_tickets: tickets, transcript_source: transcriptSource, status: "ready" })
+        .update({
+          draft_tickets: tickets,
+          transcript_source: transcriptSource,
+          transcript_text: finalTranscript,
+          status: "ready",
+        })
         .eq("id", meetingId);
     });
 

@@ -13,6 +13,7 @@ export const mockMeetings: MeetingRow[] = [
     draft_tickets: [],
     starts_at: "2026-08-03T10:00:00Z",
     known_client: false,
+    transcript_text: null,
     guest_email: "marcus.w@unknown-domain.com",
   },
   {
@@ -27,6 +28,7 @@ export const mockMeetings: MeetingRow[] = [
     draft_tickets: [],
     starts_at: "2026-08-06T14:00:00Z",
     known_client: true,
+    transcript_text: null,
     guest_email: "priya@acmecorp.com",
   },
   {
@@ -41,6 +43,7 @@ export const mockMeetings: MeetingRow[] = [
     draft_tickets: [],
     starts_at: "2026-08-07T11:00:00Z",
     known_client: false,
+    transcript_text: null,
     guest_email: null,
   },
   {
@@ -58,6 +61,7 @@ export const mockMeetings: MeetingRow[] = [
     ],
     starts_at: "2026-07-30T15:00:00Z",
     known_client: true,
+    transcript_text: null,
     guest_email: "priya@acmecorp.com",
   },
   {
@@ -72,6 +76,7 @@ export const mockMeetings: MeetingRow[] = [
     draft_tickets: [],
     starts_at: "2026-08-02T13:52:00Z",
     known_client: false,
+    transcript_text: null,
     guest_email: "hello@bramblewood.co",
   },
   {
@@ -86,6 +91,7 @@ export const mockMeetings: MeetingRow[] = [
     draft_tickets: [],
     starts_at: "2026-07-29T13:00:00Z",
     known_client: true,
+    transcript_text: null,
     guest_email: "ops@thornstudio.com",
   },
 ];

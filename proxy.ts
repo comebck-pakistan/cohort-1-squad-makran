@@ -31,7 +31,9 @@ export async function proxy(request: NextRequest) {
 
   const isPublic =
     PUBLIC_PATHS.includes(request.nextUrl.pathname) ||
-    request.nextUrl.pathname.startsWith("/auth/callback");
+    request.nextUrl.pathname.startsWith("/auth/callback") ||
+    request.nextUrl.pathname.startsWith("/api/inngest") ||
+    request.nextUrl.pathname.startsWith("/api/webhooks/");
 
   if (!user && !isPublic) {
     const redirectUrl = request.nextUrl.clone();

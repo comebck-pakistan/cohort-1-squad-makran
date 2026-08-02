@@ -50,7 +50,7 @@ M0  Frontend shell + design system implementation                          : DON
 M1  All web screens built against mock data (1–18 + Proposals/Clients)     : DONE
 M2  Supabase schema, RLS, auth (OTP + Google + GitHub OAuth)               : DONE (local, all 3 auth methods verified) [was M3]
 M3  Proposal Drafter (pgvector embeddings + retrieval + generation)        : DONE (local, OpenAI embeddings + gpt-5-nano) [was M5]
-M4  Meetings pipeline (Recall.ai + Inngest + ticketization)                [was M6]
+M4  Meetings pipeline (Recall.ai + Inngest + ticketization)                : DONE (manual-paste path verified local; Recall.ai code-complete, unverified, no account) [was M6]
 M5  Agent Runtime (Inngest steps + GitHub API + PR flow)                   [was M7]
 M6  Insights Dashboard (pure DB aggregation, no LLM)                       [was M8]
 M7  Notifications (Inngest scheduled + Nodemailer)                        [was M9]
@@ -152,25 +152,35 @@ Also: since no error states existed yet (Section 6 open question), an error/empt
 
 ### 7. M4 — Meetings pipeline *(was M6)*
 
-**Status: not started.** Next milestone up.
+**Status: DONE (local Supabase + Inngest dev server; Recall.ai code-complete, unverified).**
 
-**Scope**
-- Recall.ai Calendar Integration V1 setup; smart auto-join logic (known `client_contacts` emails only).
-- Recall webhook receiver → verify signature, fast-ack, send an Inngest event (`meeting/ready-for-processing`) rather than processing inline.
-- `inngest/functions/ticketize.ts` — Inngest function triggered by that event; calls the `lib/llm/ticketize.ts` LangChain chain, writes result to `meetings.draft_tickets` jsonb (not the `tickets` table — only promoted after human confirms, per the handoff's explicit rule). Inngest's built-in retry covers transient LLM/API failures here for free.
-- Transcript source handling: caption success vs. Whisper fallback (`transcript_source` enum), Whisper batch call when captions are off — this happens inside the same Inngest function, as a separate `step.run("transcribe-fallback")` step so a Whisper failure retries independently of the ticketization step.
-- Meeting Draft Review screen (already designed, Screen 7) wired to real data.
-- Pre-meeting briefing: on meeting confirmation, trigger `inngest/functions/briefing.ts` which does `step.sleepUntil(meetingStart - 15min)`, then reads from cache (no new LLM call) and delivers via Nodemailer + in-app — known clients only.
+**Scope, as built**
+- pgvector-adjacent schema addition: `meetings.transcript_text` column (nullable), discovered mid-build, see deviations below.
+- `lib/recall.ts`: create-bot, get-transcript, get-recording-url against Recall's documented API conventions. `app/api/webhooks/recall/route.ts`: Svix signature verification, fast-ack, DB status update + `meeting/ready-for-processing` Inngest event on call-ended.
+- Smart auto-join: `resolveKnownClient` in `lib/actions/meetings.ts` matches guest email against `client_contacts` (real query, but real `clients`/`client_contacts` data doesn't exist until M9, so this always resolves `known_client: false` today, by design, not a bug).
+- `inngest/functions/ticketize.ts`: triggered by `meeting/ready-for-processing`, uses OpenAI (`gpt-5-nano` via `lib/llm/ticketize.ts`, structured output via `generateObject`) instead of the handoff's original LangChain/Anthropic pick, consistent with M3's OpenAI-only decision. Writes to `meetings.draft_tickets`, never `tickets` directly.
+- Transcript handling: `transcript_source` set to `caption`, `whisper_fallback` (via `lib/llm/whisper.ts`, OpenAI `whisper-1`), or `manual`, as a separate retryable `step.run` inside the same function.
+- Meeting Draft Review screen (Screen 7) wired to real `meetings` + `repos` data; "Confirm & create tickets" promotes edited drafts into real `tickets` rows (state `backlog`) via `promoteDraftTickets`, the human-confirm gate, then clears `draft_tickets`.
+- `inngest/functions/briefing.ts`: `step.sleepUntil(meetingStart - 15min)`, reads cached `clients`/`proposals` data (no new LLM call), sends via `lib/mail.ts` (Nodemailer) to the freelancer's own inbox (not the client). Pre-meeting briefing preview screen wired to real data too.
+- Manual paste path (`createManualMeeting`): processes immediately, no bot/webhook wait, the only path actually verified end-to-end.
 
-**Exclusions:** no live mid-call transcript streaming (explicitly out of scope for v1.0). No auto-generated summaries (draft tickets are the digest, per handoff). No Chrome extension work.
+**Exclusions:** no live mid-call transcript streaming. No auto-generated summaries (draft tickets are the digest). No Chrome extension work. No real Clients-data wiring (that's M9, `client_id` stays null on new real meetings until then).
 
-**Exit criteria:** a real test meeting flows scheduled → in_progress → processing → ready, produces correct draft tickets, and a known-client meeting correctly fires the 15-minute-prior briefing email.
+**Discovered during build, deviates from the original spec:**
+- `proxy.ts`'s auth gate was redirecting `/api/inngest` and `/api/webhooks/*` to `/sign-in`, since those callers have no user session cookie. Fixed by excluding both path prefixes from the auth check. Real bug, not just a local-dev quirk, would have broken this in any environment.
+- `meetings` had no column to hold transcript text (only `draft_tickets`, the intentional digest). But the already-designed Draft Review screen needs the transcript for context during async review. Added `meetings.transcript_text` (nullable), cleared on confirm/discard, kept separate from `draft_tickets` so the "no auto-generated summaries" rule still holds for the permanent record.
+- LLM stack again deviates from handoff's Anthropic pick: ticketization and Whisper transcription both run on OpenAI (`gpt-5-nano`, `whisper-1`), matching M3's explicit user instruction to use OpenAI throughout.
+- Inngest SDK v4's actual API differs from older docs/examples: no `EventSchemas`/typed-events helper in this version, `createFunction({ id, triggers: [{ event }] }, handler)` takes 2 args not 3, and local dev needs `isDev: true` on the client (not just an env var) or every request 500s with "in cloud mode but no signing key found."
+- Local Mailpit SMTP wasn't reachable from the host (only its web UI port was mapped). Uncommented `smtp_port = 54325` in `supabase/config.toml` so Nodemailer can reach it locally, same pattern Auth's own OTP emails already used.
+- Recall.ai has no local/mock substitute: `scheduleBotMeeting` and the webhook receiver are built against Recall's documented API but unverified against a real account. The manual-paste path was used for all real end-to-end verification instead.
+
+**Exit criteria, verified (manual-paste path):** a real test meeting (pasted transcript) flows `processing → ready`, produces correct, genuinely actionable draft tickets (verified against a scripted test transcript), and "Confirm & create tickets" correctly promotes them into real `backlog` tickets. A known-client meeting (seeded test client/contact, since real Clients data doesn't exist until M9) correctly fires the pre-meeting briefing email at the 15-minute mark, with real cached verdict/price-band/proposal data, to the freelancer's own inbox. The `in_progress → processing → ready` bot-recall path is code-complete but unverified, blocked on a real Recall.ai account.
 
 ---
 
 ### 8. M5 — Agent Runtime *(was M7)*
 
-**Status: not started.**
+**Status: not started.** Next milestone up.
 
 **Scope**
 - A single `inngest/functions/agent-run.ts` implementing the plan/approve/execute/review loop as one durable function: `step.run("plan")` → `step.waitForEvent("plan-approved", { timeout: ... })` (the Ticket detail → Plan approval screen sends this event on human approval) → `step.run("execute")` → `step.run("review")`. This is the cleanest fit for a human-in-the-loop gate — the function genuinely pauses (no polling, no separate state-machine table needed just to track "waiting for approval").

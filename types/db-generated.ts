@@ -214,6 +214,7 @@ export type Database = {
           status: string
           title: string
           transcript_source: string | null
+          transcript_text: string | null
         }
         Insert: {
           client_id?: string | null
@@ -228,6 +229,7 @@ export type Database = {
           status?: string
           title: string
           transcript_source?: string | null
+          transcript_text?: string | null
         }
         Update: {
           client_id?: string | null
@@ -242,6 +244,7 @@ export type Database = {
           status?: string
           title?: string
           transcript_source?: string | null
+          transcript_text?: string | null
         }
         Relationships: [
           {

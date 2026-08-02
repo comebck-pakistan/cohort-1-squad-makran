@@ -6,15 +6,9 @@ import { VerdictBadge } from "@/components/state/VerdictBadge";
 import { ConfidenceTag } from "@/components/epistemic/ConfidenceTag";
 import { PriceBand } from "@/components/epistemic/PriceBand";
 import { StateChip } from "@/components/state/StateChip";
-import { getMeetingById } from "@/mock/meetings";
-import { getClientById, mockClientContacts } from "@/mock/clients";
-import { mockProposals } from "@/mock/proposals";
 import { formatDateTime } from "@/lib/format";
+import type { MeetingRow, ClientRow, ClientContactRow, ProposalRow } from "@/types/db";
 import styles from "./PreMeetingBriefingScreen.module.css";
-
-interface PreMeetingBriefingScreenProps {
-  meetingId: string;
-}
 
 /**
  * "Communication style" copy below is static placeholder content. Its real data
@@ -24,9 +18,15 @@ interface PreMeetingBriefingScreenProps {
 const COMMUNICATION_STYLE =
   "Responds quickly. Prefers bullet-point briefs over long prose. Has flagged scope creep in past projects; come with a clear change-request process.";
 
-export function PreMeetingBriefingScreen({ meetingId }: PreMeetingBriefingScreenProps) {
+interface PreMeetingBriefingScreenProps {
+  meeting: MeetingRow | null;
+  client: ClientRow | null;
+  contacts: ClientContactRow[];
+  pastProposals: ProposalRow[];
+}
+
+export function PreMeetingBriefingScreen({ meeting, client, contacts, pastProposals }: PreMeetingBriefingScreenProps) {
   const [toast, setToast] = useState<string | null>(null);
-  const meeting = getMeetingById(meetingId);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -40,8 +40,6 @@ export function PreMeetingBriefingScreen({ meetingId }: PreMeetingBriefingScreen
       </div>
     );
   }
-
-  const client = meeting.client_id ? getClientById(meeting.client_id) : undefined;
 
   if (!meeting.known_client || !client) {
     return (
@@ -57,9 +55,6 @@ export function PreMeetingBriefingScreen({ meetingId }: PreMeetingBriefingScreen
       </div>
     );
   }
-
-  const contacts = mockClientContacts.filter((c) => c.client_id === client.id);
-  const pastProposals = mockProposals.filter((p) => p.client_id === client.id).slice(0, 3);
 
   return (
     <div className={styles.page}>
