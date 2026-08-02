@@ -3,20 +3,63 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { SocialAuthButtons } from "./SocialAuthButtons";
 import { OtpCodeInput } from "./OtpCodeInput";
 import styles from "./AuthCard.module.css";
 
 export function SignUpScreen() {
   const router = useRouter();
+  const supabase = createClient();
   const [stage, setStage] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState<string[]>(["", "", "", "", ""]);
+  const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
   const [toast, setToast] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(null), 2400);
+  }
+
+  async function handleOAuth(provider: "google" | "github") {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=/onboarding/import` },
+    });
+    if (error) showToast(error.message);
+  }
+
+  async function sendCode() {
+    if (!email.trim()) {
+      showToast("Enter an email address first.");
+      return;
+    }
+    setSending(true);
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    setSending(false);
+    if (error) {
+      showToast(error.message);
+      return;
+    }
+    setStage("code");
+  }
+
+  async function verifyCode() {
+    setVerifying(true);
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: code.join(""),
+      type: "email",
+    });
+    setVerifying(false);
+    if (error) {
+      showToast(error.message);
+      return;
+    }
+    showToast("Account created. Starting onboarding…");
+    router.push("/onboarding/import");
   }
 
   const complete = code.every((d) => d.length === 1);
@@ -33,8 +76,8 @@ export function SignUpScreen() {
           <SocialAuthButtons
             googleLabel="Sign up with Google"
             githubLabel="Sign up with GitHub"
-            onGoogle={() => showToast("Signing up with Google…")}
-            onGithub={() => showToast("Signing up with GitHub…")}
+            onGoogle={() => handleOAuth("google")}
+            onGithub={() => handleOAuth("github")}
           />
 
           <div className={styles.orRow}>
@@ -52,20 +95,11 @@ export function SignUpScreen() {
             onChange={(e) => setEmail(e.target.value)}
           />
 
-          <button
-            className={styles.primaryButton}
-            onClick={() => {
-              if (!email.trim()) {
-                showToast("Enter an email address first.");
-                return;
-              }
-              setStage("code");
-            }}
-          >
-            Send code →
+          <button className={styles.primaryButton} onClick={sendCode} disabled={sending}>
+            {sending ? "Sending…" : "Send code →"}
           </button>
 
-          <div className={styles.helperText}>We&rsquo;ll email you a 5-digit code to verify your address.</div>
+          <div className={styles.helperText}>We&rsquo;ll email you a 6-digit code to verify your address.</div>
 
           <div className={styles.divider} />
 
@@ -79,7 +113,7 @@ export function SignUpScreen() {
         </>
       ) : (
         <>
-          <div className={styles.codeSentTo}>We sent a 5-digit code to</div>
+          <div className={styles.codeSentTo}>We sent a 6-digit code to</div>
           <div className={styles.codeEmail}>{email}</div>
           <div className={styles.changeEmailWrap}>
             <button className={styles.changeEmailLink} onClick={() => setStage("email")}>
@@ -92,20 +126,15 @@ export function SignUpScreen() {
 
           <button
             className={styles.primaryButton}
-            disabled={!complete}
-            onClick={() => {
-              if (complete) {
-                showToast("Account created. Starting onboarding…");
-                router.push("/onboarding/import");
-              }
-            }}
+            disabled={!complete || verifying}
+            onClick={verifyCode}
           >
-            Create account →
+            {verifying ? "Creating account…" : "Create account →"}
           </button>
 
           <div className={styles.resendNote}>
             Code expires in 10 minutes ·{" "}
-            <button className={styles.resendLink} onClick={() => showToast(`Code resent to ${email}.`)}>
+            <button className={styles.resendLink} onClick={sendCode}>
               Resend code
             </button>
           </div>

@@ -108,6 +108,97 @@
   font-size: 14px;
 }
 
+.exampleRow {
+  position: relative;
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--border) 0,
+    var(--border) 1px,
+    transparent 1px,
+    transparent 8px
+  );
+}
+
+.examplePill {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  color: var(--ink-3);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 3px 8px;
+  align-self: flex-start;
+}
+
+.sectionLabel {
+  padding: 14px 18px 4px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 30;
+}
+
+.modalWrap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 31;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--panel);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-pop);
+  width: 100%;
+  max-width: 560px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modalTitle {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.modalHint {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin-top: -8px;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 160px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  resize: vertical;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .toast {
   position: fixed;
   bottom: 32px;

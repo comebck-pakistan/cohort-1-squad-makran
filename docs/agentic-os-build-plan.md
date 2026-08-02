@@ -3,6 +3,8 @@
 
 Paste this whole document as the first message in a new chat, along with the original context handoff. This plan supersedes Section 2 ("Next") of that handoff.
 
+**Revision note (2026-08-02):** milestones reordered per explicit instruction: the web app (frontend + backend) must be fully built and running end-to-end before extension work resumes. Chrome extension screens (old M2) and Explain the Client (old M4, which depends on the extension's content script) both moved to the end, after the web app's backend milestones. Old milestone numbers are noted in parens below wherever renumbered.
+
 ---
 
 ### 0. STACK CHANGES FROM ORIGINAL HANDOFF
@@ -41,27 +43,30 @@ Since this is a real product, not a throwaway MVP, every milestone must respect:
 
 ---
 
-### 2. MILESTONE MAP (overview)
+### 2. MILESTONE MAP (overview, reordered 2026-08-02)
 
 ```
-M0  Frontend shell + design system implementation
-M1  All web screens built against mock data (1–18 + Proposals list + Clients list, per open questions)
-M2  Chrome extension screens 19–25 — design in Claude Design, then build against mock data
-M3  Supabase schema, RLS, auth (OTP + Google + GitHub OAuth)
-M4  Explain the Client (real data: extension content script → LLM → cache)
-M5  Proposal Drafter (pgvector embeddings + retrieval + generation)
-M6  Meetings pipeline (Recall.ai + QStash + ticketization)
-M7  Agent Runtime (QStash steps + GitHub API + PR flow)
-M8  Insights Dashboard (pure DB aggregation, no LLM)
-M9  Notifications (QStash scheduled + Nodemailer)
-M10 Hardening pass (error states, empty states, rate limits, monitoring)
+M0  Frontend shell + design system implementation                          : DONE
+M1  All web screens built against mock data (1–18 + Proposals/Clients)     : DONE
+M2  Supabase schema, RLS, auth (OTP + Google + GitHub OAuth)               : DONE (local, all 3 auth methods verified) [was M3]
+M3  Proposal Drafter (pgvector embeddings + retrieval + generation)        : DONE (local, OpenAI embeddings + gpt-5-nano) [was M5]
+M4  Meetings pipeline (Recall.ai + Inngest + ticketization)                [was M6]
+M5  Agent Runtime (Inngest steps + GitHub API + PR flow)                   [was M7]
+M6  Insights Dashboard (pure DB aggregation, no LLM)                       [was M8]
+M7  Notifications (Inngest scheduled + Nodemailer)                        [was M9]
+      ↑ web app (frontend + backend) fully running end-to-end here ↑
+M8  Chrome extension screens 19–25, build against mock data                [was M2]: designs DONE, build not started
+M9  Explain the Client (real data: extension content script → LLM → cache) [was M4], depends on M8
+M10 Hardening pass (error states, empty states, rate limits, monitoring)   : covers M2–M9
 ```
 
-Each milestone below has: **scope**, **explicit exclusions** (so scope doesn't creep), and **exit criteria** (how you know it's done and safe to move on).
+Each milestone below has: **status**, **scope**, **explicit exclusions** (so scope doesn't creep), and **exit criteria** (how you know it's done and safe to move on).
 
 ---
 
 ### 3. M0 — Frontend shell + design system implementation
+
+**Status: ✅ DONE.** All design tokens, primitives, Epistemic Grammar components, state components, console/feedback components, app shell, and the `/dev/components` gallery are built, typed, and verified (typecheck + lint + build clean).
 
 **Scope**
 - Next.js 16 App Router project scaffold, TypeScript strict mode.
@@ -78,73 +83,76 @@ Each milestone below has: **scope**, **explicit exclusions** (so scope doesn't c
 
 ### 4. M1 — All web screens, mock data
 
-**Scope:** build screens 1–18 plus the two flagged-missing screens (Proposals list, Clients list) using static/mock data objects that match the real DB types. Each screen's mock data should be shaped exactly like what the eventual Supabase query will return, so wiring in M3+ is a data-source swap, not a rebuild.
+**Status: ✅ DONE.** All 18 designed screens plus Proposals list, Clients list (extrapolated from Tickets Board), and Sign In/Sign Up/Landing are built against mock data shaped like the real DB types, with error/empty states alongside the happy path. Verified via typecheck, lint, build, and browser click-through across all states.
 
-Also: since no error states exist yet (Section 6 open question), design and build at least one error/empty state per screen now, while it's cheap — before real integrations exist to complicate it.
+**Scope:** build screens 1–18 plus the two flagged-missing screens (Proposals list, Clients list) using static/mock data objects that match the real DB types. Each screen's mock data should be shaped exactly like what the eventual Supabase query will return, so wiring in M2+ is a data-source swap, not a rebuild.
 
-**Exclusions:** no real backend calls. No Chrome extension (that's M2).
+Also: since no error states existed yet (Section 6 open question), an error/empty state was designed and built per screen while it was cheap.
+
+**Exclusions:** no real backend calls. No Chrome extension (that's M8 now).
 
 **Exit criteria:** you can click through the entire web app, every screen, every state (loading/empty/error/populated), with nothing wired to Supabase yet.
 
 ---
 
-### 5. M2 — Chrome extension screens (19–25)
+### 5. M2 — Supabase schema, RLS, auth *(was M3)*
 
-**Scope:** first, write and verify the 7 Claude Design prompts listed in the handoff's Artifact 2, against the feature spec, same format as screens 1–18. Then scaffold the Plasmo extension project and build all 7 screens against mock data, matching the web app's shared primitives where reusable (state chips, epistemic grammar rows) — consider a shared `packages/ui` if using a monorepo, or a copied/synced component set if not (decide based on how much divergence the 380px popup constraint forces).
+**Status: ✅ DONE (local Supabase stack).** Built and verified against `npx supabase start` (Docker), not a hosted cloud project; see notes below for what that does and doesn't cover.
 
-**Exclusions:** no real Upwork DOM scraping yet, no real LLM calls.
+**Scope, as built**
+- All 8 tables (`integrations`, `repos`, `meetings`, `tickets`, `proposals`, `clients`, `client_contacts`, `agent_runs`) as SQL migrations in `supabase/migrations/`, exact enums and fields per the handoff, `owner_id` on every table.
+- RLS: owner-only `for all using/with check (owner_id = auth.uid())` on every table, plus a follow-up migration granting table privileges to `authenticated`/`service_role` (newer Supabase projects no longer auto-expose new tables to Data API roles; RLS alone isn't sufficient without this).
+- Indexes on every `owner_id`, on `tickets.state` / `proposals.state` / `meetings.status` / `clients.confidence_tier`, and on the FK join columns.
+- Auth: Supabase Auth wired for OTP email + Google OAuth + GitHub OAuth in `supabase/config.toml`. All three verified end-to-end locally (real user, real session, lands on `/home`).
+- `types/db.ts` now derives from `types/db-generated.ts` (real `supabase gen types typescript --local` output), narrowed back to the locked literal-union types, so every existing import (`ClientRow`, `MeetingRow`, etc.) kept its shape.
+- `lib/db/*.ts` repository functions for all 8 tables (typed CRUD, RLS does the owner-scoping).
+- `lib/supabase/client.ts` + `server.ts`, `proxy.ts` (Next 16 renamed `middleware.ts` → `proxy.ts`) redirecting unauthenticated requests to `/sign-in`.
 
-**Exit criteria:** extension popup navigable through all states (signed-out, loading, not-on-job-page, full/low/insufficient confidence, in-voice/survey-fallback proposal, insights tab) with mock data.
+**Discovered during build, deviates from the original spec:**
+- The design system locked a 5-digit OTP code (`OtpCodeInput`). Supabase's GoTrue enforces a hard floor of 6 digits on email OTPs regardless of `otp_length` config (verified empirically: 5 → still sends 6, 8 → sends 8). Bumped `OtpCodeInput` and the sign-in/sign-up copy to 6 digits to match; this could not be resolved by config alone.
+- Local dev needs a custom email template (`supabase/templates/magic_link.html`) with `{{ .Token }}`, since Supabase's default magic-link email only shows a link, not the bare code the UI's digit-box input needs.
+- `config.toml`'s scaffolded `additional_redirect_urls` defaulted to `https://127.0.0.1:3000` (wrong scheme, no path). Since our OAuth redirect target is `http://127.0.0.1:3000/auth/callback`, it wasn't on the allow-list; GoTrue silently rejected it and fell back to bare `site_url`, landing the user on the marketing page with a dangling `?code=...` instead of `/auth/callback`. Fixed by adding the real callback URL to the allow-list.
+- The Supabase CLI does not read `.env.local` (that's a Next.js-only convention) — `npx supabase start`/`stop` need the OAuth client id/secret exported into the actual shell env, or `config.toml`'s `env(...)` refs resolve to the literal string `env(...)`.
+- Known Supabase CLI bug ([supabase/cli#4668](https://github.com/supabase/cli/issues/4668)): on every fresh `supabase start`, the auth container races Kong and tries fetching our custom OTP email template before Kong has created it, failing silently, every sign-in/sign-up email then arrives with no code, just a bare link. Fix every time: `docker restart supabase_auth_cohort-1-squad-makran` once the stack is up. See `docs/env-vars.md`.
 
----
+**Exclusions:** no LLM features, no real GitHub PR flow yet (auth only, not repo actions). No Chrome extension work.
 
-### 6. M3 — Supabase schema, RLS, auth
-
-**Scope**
-- All tables from the handoff (`integrations`, `repos`, `meetings`, `tickets`, `proposals`, `clients`, `client_contacts`, `agent_runs`) as SQL migrations, exact enums and fields as specified, `owner_id` on every table.
-- RLS policies: owner-only read/write on every table (no team concept in v1.0, so this is straightforward per-row `owner_id = auth.uid()`).
-- Indexes: at minimum on all `owner_id` columns, and on any column used in the confidence-tier or state-machine queries.
-- Auth: Supabase Auth with OTP email + Google OAuth + GitHub OAuth, no passwords. GitHub OAuth scope kept as narrow as the "OAuth not GitHub App" decision allows.
-- Generate TypeScript types from schema; wire into `lib/db/*` repository functions.
-
-**Exclusions:** no LLM features, no real GitHub PR flow yet (auth only, not repo actions).
-
-**Exit criteria:** you can sign up, sign in via all three methods, and every table round-trips through its repository function with RLS correctly blocking cross-user access (write a quick test for this — it's the one thing that's very expensive to fix later).
-
----
-
-### 7. M4 — Explain the Client
-
-**Scope**
-- Extension content script scrapes Upwork client data.
-- `lib/llm/client-analysis.ts` — LangChain chain calling Anthropic, with a Zod-validated structured output schema matching the three confidence tiers.
-- Confidence tier logic implemented exactly per the exact triggers in the handoff (≥1 hire AND reviews/spend visible → full; etc.) — this logic should live in a plain deterministic function, NOT be left to the LLM to self-report, since the tier is derived from Upwork data facts, not judgment.
-- Price band calc (blend of client history + user rate history, falling back per tier).
-- Caching: `clients.last_analyzed_data_hash`, hash-match short-circuit, 30-day soft TTL, manual refresh action.
-- Wire into the M2 extension screens (real data replaces mock).
-
-**Exclusions:** proposal drafting, meetings, agent runtime — this milestone is client analysis only.
-
-**Exit criteria:** for a real Upwork job page, the extension shows the correct tier, correct verdict badge, correct price band (or absence of one), and cache correctly short-circuits on a second view of the same unchanged page.
+**Exit criteria, verified:**
+- Sign-up → OTP verify → onboarding, and sign-in → OTP verify → `/home`, both confirmed end-to-end in the browser against the local stack (real Supabase user rows, real session cookies).
+- `proxy.ts` confirmed redirecting an unauthenticated request to `/sign-in`.
+- `scripts/rls-test.mjs` confirmed all 8 tables round-trip (insert+select) as the owning user, and that a second user gets zero rows back on select, a rejected insert, and a no-op update on every table. Run it yourself: `NEXT_PUBLIC_SUPABASE_ANON_KEY=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/rls-test.mjs` (keys from `npx supabase status`).
+- Google and GitHub OAuth both confirmed end-to-end (real provider login → `/auth/callback` → `/home` signed in). All exit criteria passed.
 
 ---
 
-### 8. M5 — Proposal Drafter
+### 6. M3 — Proposal Drafter *(was M5)*
 
-**Scope**
-- pgvector setup inside Supabase; embedding pipeline for imported past proposals (onboarding Screen 1 already covers import UI).
-- `lib/llm/proposal-drafter.ts` — retrieval (top-k similar past proposals) + generation chain, in-voice mode.
-- Survey-fallback mode when insufficient past-proposal data exists — must never be labeled "in your voice" (hard rule from handoff).
-- "Copy & Mark Sent" combined action wired to proposal state machine (`draft → sent`).
-- Example/synthetic data auto-hide at 10 resolved proposals.
+**Status: DONE (local Supabase stack).**
 
-**Exclusions:** no voice feedback loop (explicitly deferred to post-v1.0 per handoff). No auto-send.
+**Scope, as built**
+- pgvector extension enabled inside Supabase; `embedding vector(1536)` column added directly to `proposals` (no 9th table, see deviations below). `match_proposals` Postgres function does cosine-similarity top-k retrieval, `security invoker` so RLS still scopes it to the caller.
+- `lib/llm/embeddings.ts` + `lib/llm/proposal-drafter.ts`: OpenAI `text-embedding-3-small` for embeddings, OpenAI `gpt-5-nano` for generation (per the user's explicit instruction to use OpenAI throughout, not the handoff's original Anthropic pick; see deviations).
+- Survey-fallback mode when the user's embedded past-proposal corpus is under 10 rows, using onboarding's style-survey answers (tone/length/opener). Never labeled "in your voice", shown with a distinct "Survey-fallback draft" tag.
+- Onboarding Import screen wired to `importPastProposals` (persists + embeds each pasted proposal as a `proposals` row, state `won`, no client) and Voice screen wired to `saveVoiceProfile` (stored on `auth.users.user_metadata`, not a new table).
+- "New proposal" entry point on the Proposals list (paste job post text) since the Chrome extension trigger surface doesn't exist yet; calls `requestProposalDraft`, which decides in-voice vs. survey-fallback and saves a `draft` row.
+- "Copy & Mark Sent" wired to `copyAndMarkSent`, real DB transition `draft → sent`. Outcome modal wired to `markProposalOutcome` for `sent → won/lost`.
+- Example/synthetic data auto-hide: 2 hardcoded illustrative rows (hatch pattern + EXAMPLE DATA pill) shown only while the user's real resolved (won/lost) proposal count is under 10, never blended with real rows.
 
-**Exit criteria:** drafting a proposal with <10 historical proposals correctly falls back to survey mode and is visually/textually distinct (Epistemic Grammar synthetic treatment); with ≥10, in-voice mode retrieves and generates correctly; "Copy & Mark Sent" correctly transitions state.
+**Exclusions:** no voice feedback loop (explicitly deferred to post-v1.0 per handoff). No auto-send. No Chrome extension work.
+
+**Discovered during build, deviates from the original spec:**
+- Handoff's locked stack said "LLM: Anthropic API via Vercel AI SDK," but Anthropic has no embeddings API, and the user explicitly asked for OpenAI for both embeddings and generation. Built entirely on `@ai-sdk/openai`, no Anthropic dependency in this milestone.
+- Cheapest-model check done against OpenAI's pricing page before wiring real calls: `text-embedding-3-small` ($0.02/1M tokens) was already the cheapest embedding model; generation was switched from an initial `gpt-4o-mini` guess to `gpt-5-nano` ($0.05 in / $0.40 out per 1M), confirmed cheapest via a live test call.
+- features.md's cold-start rule ("0-1 proposals imported shows the survey banner") and the exit criteria's "<10 historical proposals falls back to survey mode" are two different thresholds for two different moments: 0-1 governs the onboarding-time fallback banner, 10 governs the per-draft in-voice vs. survey-fallback decision. Both are implemented as written, not merged.
+- Table names are locked to the original 8 (no `profiles`/embeddings table). The embedding column lives on `proposals` directly; past-proposal corpus rows reuse `proposals` with `state = 'won'` and `client_id = null`. Voice-survey answers live in Supabase Auth's `user_metadata` instead of a new table.
+
+**Exit criteria, verified:** drafting a proposal with <10 historical proposals correctly falls back to survey mode (`in_voice: false`, visually distinct); with ≥10, in-voice mode retrieves the top-3 similar past proposals and generates in that style (`in_voice: true`); "Copy & Mark Sent" correctly transitions `draft → sent` in the real DB. Verified end-to-end in browser plus direct DB checks, test data cleaned up afterward.
 
 ---
 
-### 9. M6 — Meetings pipeline
+### 7. M4 — Meetings pipeline *(was M6)*
+
+**Status: not started.** Next milestone up.
 
 **Scope**
 - Recall.ai Calendar Integration V1 setup; smart auto-join logic (known `client_contacts` emails only).
@@ -154,13 +162,15 @@ Also: since no error states exist yet (Section 6 open question), design and buil
 - Meeting Draft Review screen (already designed, Screen 7) wired to real data.
 - Pre-meeting briefing: on meeting confirmation, trigger `inngest/functions/briefing.ts` which does `step.sleepUntil(meetingStart - 15min)`, then reads from cache (no new LLM call) and delivers via Nodemailer + in-app — known clients only.
 
-**Exclusions:** no live mid-call transcript streaming (explicitly out of scope for v1.0). No auto-generated summaries (draft tickets are the digest, per handoff).
+**Exclusions:** no live mid-call transcript streaming (explicitly out of scope for v1.0). No auto-generated summaries (draft tickets are the digest, per handoff). No Chrome extension work.
 
 **Exit criteria:** a real test meeting flows scheduled → in_progress → processing → ready, produces correct draft tickets, and a known-client meeting correctly fires the 15-minute-prior briefing email.
 
 ---
 
-### 10. M7 — Agent Runtime
+### 8. M5 — Agent Runtime *(was M7)*
+
+**Status: not started.**
 
 **Scope**
 - A single `inngest/functions/agent-run.ts` implementing the plan/approve/execute/review loop as one durable function: `step.run("plan")` → `step.waitForEvent("plan-approved", { timeout: ... })` (the Ticket detail → Plan approval screen sends this event on human approval) → `step.run("execute")` → `step.run("review")`. This is the cleanest fit for a human-in-the-loop gate — the function genuinely pauses (no polling, no separate state-machine table needed just to track "waiting for approval").
@@ -170,13 +180,15 @@ Also: since no error states exist yet (Section 6 open question), design and buil
 - Live console screen (already designed, Screen 10) wired to real execution log via realtime (Supabase Realtime or polling — decide based on how "live" it needs to feel).
 - Ticket detail screens (Plan approval, Review/PR) wired to real state.
 
-**Exclusions:** no kanban/board view (explicitly excluded). No inline diff viewer (explicitly excluded).
+**Exclusions:** no kanban/board view (explicitly excluded). No inline diff viewer (explicitly excluded). No Chrome extension work.
 
 **Exit criteria:** a real ticket goes through the full loop against a real (test) repo, correctly gates at plan-approval and PR-review, correctly attributes commits, correctly hits `needs_human` after 3 failed attempts on a deliberately-broken test case.
 
 ---
 
-### 11. M8 — Insights Dashboard
+### 9. M6 — Insights Dashboard *(was M8)*
+
+**Status: not started.**
 
 **Scope:** pure DB aggregation (win/loss patterns, outcome reasons) — no LLM involved, per the handoff. Outcome capture modal (already designed, Screen 13) wired to real writes. Example-data-ON state (Screen 12b) correctly toggles based on the 10-proposal threshold.
 
@@ -184,32 +196,68 @@ Also: since no error states exist yet (Section 6 open question), design and buil
 
 ---
 
-### 12. M9 — Notifications
+### 10. M7 — Notifications *(was M9)*
+
+**Status: not started.**
 
 **Scope:** the 3 fixed triggers (PR ready, needs-human, pre-meeting briefing) fire as Inngest events sent from the agent-run and briefing functions above; a single `inngest/functions/notify.ts` handles delivery via Nodemailer/Gmail SMTP, plus the global opt-in "every ticket status change" (off by default). Settings — Notifications screen (already designed, Screen 16) wired to real preference storage.
 
 **Exit criteria:** all 3 triggers fire correctly in a staged test; opt-in toggle correctly gates the extra notifications.
 
+**Web app milestone, exit criteria for the whole run:** once M2–M7 above are done, the web app (frontend + backend) is fully running end-to-end on real data, with nothing left mocked. This is the gate before Chrome extension work resumes.
+
+---
+
+### 11. M8 — Chrome extension screens (19–25) *(was M2)*
+
+**Status: designs DONE, build not started.** All 7 Claude Design mockups exist and are verified in `web-designs/` (`Extension Client Full Analysis`, `Extension Client Low Confidence`, `Extension Client Insufficient Data`, `Extension Proposal In-Voice Draft`, `Extension Proposal Survey Fallback`, `Extension Insights Compact Dashboard`, `Extension Utility States`). The Plasmo project itself has not been scaffolded and none of the 7 screens have been built yet; that work is now deferred until the web app (M2–M7) is complete, per the reordering above.
+
+**Scope:** scaffold the Plasmo extension project and build all 7 screens against mock data, matching the web app's shared primitives where reusable (state chips, epistemic grammar rows) — consider a shared `packages/ui` if using a monorepo, or a copied/synced component set if not (decide based on how much divergence the 380px popup constraint forces).
+
+**Exclusions:** no real Upwork DOM scraping yet, no real LLM calls.
+
+**Exit criteria:** extension popup navigable through all states (signed-out, loading, not-on-job-page, full/low/insufficient confidence, in-voice/survey-fallback proposal, insights tab) with mock data.
+
+---
+
+### 12. M9 — Explain the Client *(was M4)*
+
+**Status: not started. Depends on M8** (needs the extension's content script + popup shell to exist before real scraping can be wired in).
+
+**Scope**
+- Extension content script scrapes Upwork client data.
+- `lib/llm/client-analysis.ts` — LangChain chain calling Anthropic, with a Zod-validated structured output schema matching the three confidence tiers.
+- Confidence tier logic implemented exactly per the exact triggers in the handoff (≥1 hire AND reviews/spend visible → full; etc.) — this logic should live in a plain deterministic function, NOT be left to the LLM to self-report, since the tier is derived from Upwork data facts, not judgment.
+- Price band calc (blend of client history + user rate history, falling back per tier).
+- Caching: `clients.last_analyzed_data_hash`, hash-match short-circuit, 30-day soft TTL, manual refresh action.
+- Wire into the M8 extension screens (real data replaces mock).
+
+**Exclusions:** proposal drafting, meetings, agent runtime — this milestone is client analysis only.
+
+**Exit criteria:** for a real Upwork job page, the extension shows the correct tier, correct verdict badge, correct price band (or absence of one), and cache correctly short-circuits on a second view of the same unchanged page.
+
 ---
 
 ### 13. M10 — Hardening pass
 
-**Scope:** this is where the "no error states designed" gap gets closed for real integrations (webhook failures, Recall bot failed to join, GitHub OAuth error, Whisper fallback failure) — go back through M4–M9 and confirm every failure mode has a designed and built state, not just a console.error. Add basic rate-limit handling on the Anthropic and GitHub APIs. Add minimal monitoring (Vercel logs + a simple alert on `needs_human` accumulation).
+**Status: not started. Covers M2–M9** (both the web app's backend milestones and the Chrome extension milestones).
+
+**Scope:** this is where the "no error states designed" gap gets closed for real integrations (webhook failures, Recall bot failed to join, GitHub OAuth error, Whisper fallback failure) — go back through M2–M9 and confirm every failure mode has a designed and built state, not just a console.error. Add basic rate-limit handling on the Anthropic and GitHub APIs. Add minimal monitoring (Vercel logs + a simple alert on `needs_human` accumulation).
 
 **Exit criteria:** you can force each documented failure mode in a staging environment and get a correct, human-readable state on screen — not a blank page or unhandled exception.
 
 ---
 
-### 4. STILL-OPEN QUESTIONS TO RESOLVE BEFORE OR DURING M6/M7
+### 14. STILL-OPEN QUESTIONS TO RESOLVE BEFORE OR DURING M4/M5
 
 Carried over from the original handoff, unresolved by this plan — flag these to Claude rather than letting it assume:
-- "Communication style" block in pre-meeting briefing — LLM-generated-and-cached at analysis time, or a user-editable notes field? Needs a decision before M6.
+- "Communication style" block in pre-meeting briefing — LLM-generated-and-cached at analysis time, or a user-editable notes field? Needs a decision before M4 (Meetings pipeline).
 - Pricing page — no model decided; not blocking for build, but the landing page has a dangling nav link.
 
 ---
 
-### 5. HOW TO WORK THROUGH THIS WITH CLAUDE
+### 15. HOW TO WORK THROUGH THIS WITH CLAUDE
 
-- Work one milestone at a time. Don't let Claude start M(N+1) code until M(N)'s exit criteria are actually met.
+- Work one milestone at a time, in the order in Section 2. Don't let Claude start M(N+1) code until M(N)'s exit criteria are actually met.
 - At the start of each milestone, ask Claude to restate the milestone's scope and exclusions back before writing code — cheap check against scope creep.
 - Treat the "Exclusions" line per milestone as a hard boundary, not a suggestion — if Claude's implementation starts pulling in a later milestone's concern, stop and split it out.

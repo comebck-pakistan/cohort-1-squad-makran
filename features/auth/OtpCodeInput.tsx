@@ -1,14 +1,14 @@
 import { ChangeEvent, KeyboardEvent } from "react";
 import styles from "./AuthCard.module.css";
 
-const LENGTH = 5;
+const LENGTH = 6;
 
 interface OtpCodeInputProps {
   code: string[];
   onChange: (code: string[]) => void;
 }
 
-/** Passwordless auth: 5-digit OTP email code (design-system.md, locked). */
+/** Passwordless auth: 6-digit OTP email code (Supabase Auth enforces a 6-digit floor; design-system.md originally specified 5). */
 export function OtpCodeInput({ code, onChange }: OtpCodeInputProps) {
   function updateDigit(i: number, e: ChangeEvent<HTMLInputElement>) {
     const clean = e.target.value.replace(/[^0-9]/g, "").slice(-1);

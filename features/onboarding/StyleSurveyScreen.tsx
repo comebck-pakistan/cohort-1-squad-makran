@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { OnboardingHeader } from "@/components/layout/OnboardingHeader";
+import { saveVoiceProfile } from "@/lib/actions/proposals";
 import styles from "./StyleSurveyScreen.module.css";
 
 const TONE_OPTIONS = ["Direct & concise", "Warm & personal", "Technical & detailed", "Consultative"];
@@ -42,12 +43,16 @@ interface StyleSurveyScreenProps {
   showFallbackBanner?: boolean;
 }
 
-export function StyleSurveyScreen({ showFallbackBanner = true }: StyleSurveyScreenProps) {
+export function StyleSurveyScreen({ showFallbackBanner }: StyleSurveyScreenProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const importedCount = Number(searchParams.get("imported") ?? "0");
+  const fallbackBanner = showFallbackBanner ?? importedCount <= 1;
   const [tone, setTone] = useState<string | null>(null);
   const [length, setLength] = useState("Medium (3–4 paragraphs)");
   const [opener, setOpener] = useState("Address the client's problem directly");
   const [toast, setToast] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -58,7 +63,7 @@ export function StyleSurveyScreen({ showFallbackBanner = true }: StyleSurveyScre
     <div style={{ minHeight: "100vh", background: "var(--base)" }}>
       <OnboardingHeader current={1} />
       <div className={styles.page}>
-        {showFallbackBanner && (
+        {fallbackBanner && (
           <div className={styles.banner}>
             <div className={styles.bannerBar} />
             <span className={styles.bannerText}>
@@ -101,12 +106,20 @@ export function StyleSurveyScreen({ showFallbackBanner = true }: StyleSurveyScre
           </Button>
           <Button
             variant="primary"
-            onClick={() => {
-              showToast("Saved. Continuing to Connect…");
-              router.push("/onboarding/connect");
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await saveVoiceProfile({ tone, length_preference: length, opener });
+                showToast("Saved. Continuing to Connect…");
+                router.push("/onboarding/connect");
+              } catch {
+                showToast("Could not save. Try again.");
+                setSaving(false);
+              }
             }}
           >
-            Save &amp; continue
+            {saving ? "Saving…" : "Save & continue"}
           </Button>
         </div>
       </div>

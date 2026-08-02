@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Vendored Claude Design export — not our code, not lintable.
     "web-designs/**",
+    // Supabase CLI's local runtime state (edge-runtime bootstrap script etc).
+    "supabase/.temp/**",
   ]),
 ]);
 
