@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { Input } from "@/components/ui/Input";
 import { connectRepo, removeRepo, setDefaultRepo, disconnectGithub } from "@/lib/actions/repos";
+import { generateExtensionToken } from "@/lib/actions/extension-tokens";
 import type { RepoRow, IntegrationRow } from "@/types/db";
 import styles from "./IntegrationsScreen.module.css";
 
@@ -26,9 +27,10 @@ const POLICIES = [
 interface IntegrationsScreenProps {
   initialIntegrations: IntegrationRow[];
   initialRepos: RepoRow[];
+  initialExtensionConnected: boolean;
 }
 
-export function IntegrationsScreen({ initialIntegrations, initialRepos }: IntegrationsScreenProps) {
+export function IntegrationsScreen({ initialIntegrations, initialRepos, initialExtensionConnected }: IntegrationsScreenProps) {
   const router = useRouter();
   const [repos, setRepos] = useState<RepoRow[]>(initialRepos);
   const [policy, setPolicy] = useState<"smart" | "always">("smart");
@@ -38,6 +40,22 @@ export function IntegrationsScreen({ initialIntegrations, initialRepos }: Integr
   const [newRepo, setNewRepo] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [extensionConnected, setExtensionConnected] = useState(initialExtensionConnected);
+  const [generatingToken, setGeneratingToken] = useState(false);
+  const [newToken, setNewToken] = useState<string | null>(null);
+
+  async function handleGenerateToken() {
+    setGeneratingToken(true);
+    try {
+      const token = await generateExtensionToken();
+      setNewToken(token);
+      setExtensionConnected(true);
+    } catch {
+      showToast("Could not generate a token. Try again.");
+    } finally {
+      setGeneratingToken(false);
+    }
+  }
 
   function showToast(msg: string) {
     setToast(msg);
@@ -222,6 +240,58 @@ export function IntegrationsScreen({ initialIntegrations, initialRepos }: Integr
             );
           })}
         </div>
+      </Card>
+
+      <Card style={{ marginBottom: 16 }}>
+        <div className={styles.providerRow}>
+          <svg className={styles.providerIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" strokeWidth="1.5">
+            <rect x="4" y="3" width="16" height="18" rx="2" />
+            <path d="M9 21v-4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className={styles.providerName}>Browser extension</div>
+          <div className={styles.spacer} />
+          {extensionConnected ? (
+            <span className={styles.connectedPill}>● Connected</span>
+          ) : (
+            <span className={styles.accountLabel}>Not connected yet.</span>
+          )}
+        </div>
+        <div className={styles.subNote}>
+          Bearer token, paste it into the extension&rsquo;s sign-in screen · same trust level as the
+          GitHub token above · generating a new one replaces the old (old copies stop working)
+        </div>
+
+        <div className={styles.divider} />
+
+        {newToken ? (
+          <div>
+            <div className={styles.subSectionTitle} style={{ marginBottom: 8 }}>
+              Your token (shown once, copy it now)
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Input readOnly value={newToken} style={{ height: 36, flex: 1, fontFamily: "var(--font-mono)", fontSize: 12 }} />
+              <Button
+                variant="secondary"
+                style={{ height: 36, padding: "0 14px", fontSize: 13 }}
+                onClick={() => {
+                  navigator.clipboard.writeText(newToken);
+                  showToast("Copied to clipboard.");
+                }}
+              >
+                Copy
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant={extensionConnected ? "secondary" : "primary"}
+            style={{ height: 36, padding: "0 14px", fontSize: 13 }}
+            onClick={handleGenerateToken}
+            disabled={generatingToken}
+          >
+            {generatingToken ? "Generating…" : extensionConnected ? "Generate new token" : "Generate token"}
+          </Button>
+        )}
       </Card>
 
       <div className={styles.comingSoon}>

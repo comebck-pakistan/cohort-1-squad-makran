@@ -32,6 +32,62 @@ export async function updateClientRow(
   return data as ClientRow;
 }
 
+/**
+ * M9: dedupe by the job's own URL. No client ID is exposed to a logged-out/unauthenticated
+ * scrape, so this is job-page-scoped, not a true cross-job client identity. Takes ownerId
+ * explicitly (this is called from the extension's API route via the service-role client,
+ * which bypasses RLS, so the owner scoping has to happen here instead).
+ */
+export async function findClientByUpworkUrl(
+  supabase: SupabaseClient,
+  ownerId: string,
+  upworkUrl: string
+): Promise<ClientRow | null> {
+  const { data, error } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("owner_id", ownerId)
+    .eq("upwork_url", upworkUrl)
+    .maybeSingle();
+  if (error) throw error;
+  return data as ClientRow | null;
+}
+
+export interface ClientAnalysisPatch {
+  name: string;
+  confidence_tier: ClientRow["confidence_tier"];
+  verdict: ClientRow["verdict"];
+  price_band_min: string | null;
+  price_band_max: string | null;
+  price_band_low_confidence: boolean;
+  hires_count: number;
+  reviews_visible: boolean;
+  spend_visible: boolean;
+  payment_verified: boolean;
+  last_analyzed_data_hash: string;
+  last_analyzed_at: string;
+}
+
+/** Insert-or-update by (owner, upwork_url), the M9 analysis endpoint's single write path. */
+export async function upsertClientAnalysis(
+  supabase: SupabaseClient,
+  ownerId: string,
+  upworkUrl: string,
+  patch: ClientAnalysisPatch
+): Promise<ClientRow> {
+  const existing = await findClientByUpworkUrl(supabase, ownerId, upworkUrl);
+  if (existing) {
+    return updateClientRow(supabase, existing.id, patch);
+  }
+  return createClientRow(supabase, {
+    owner_id: ownerId,
+    upwork_url: upworkUrl,
+    jobs_won: 0,
+    jobs_lost: 0,
+    ...patch,
+  });
+}
+
 export async function deleteClient(supabase: SupabaseClient, id: string): Promise<void> {
   const { error } = await supabase.from("clients").delete().eq("id", id);
   if (error) throw error;

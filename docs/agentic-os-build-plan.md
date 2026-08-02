@@ -56,7 +56,7 @@ M6  Insights Dashboard (pure DB aggregation, no LLM)                       : DON
 M7  Notifications (Inngest scheduled + Nodemailer)                        : DONE (local, all 3 triggers + opt-in verified via staged test) [was M9]
       ↑ web app (frontend + backend) fully running end-to-end here ↑
 M8  Chrome extension screens 19–25, build against mock data                [was M2]: DONE (mock data, Plasmo project scaffolded)
-M9  Explain the Client (real data: extension content script → LLM → cache) [was M4], depends on M8
+M9  Explain the Client (real data: extension content script → LLM → cache) [was M4], depends on M8: DONE
 M10 Hardening pass (error states, empty states, rate limits, monitoring)   : covers M2–M9
 ```
 
@@ -272,19 +272,26 @@ Also: since no error states existed yet (Section 6 open question), an error/empt
 
 ### 12. M9 — Explain the Client *(was M4)*
 
-**Status: not started. Depends on M8** (needs the extension's content script + popup shell to exist before real scraping can be wired in).
+**Status: ✅ DONE.**
 
-**Scope**
-- Extension content script scrapes Upwork client data.
-- `lib/llm/client-analysis.ts` — LangChain chain calling Anthropic, with a Zod-validated structured output schema matching the three confidence tiers.
-- Confidence tier logic implemented exactly per the exact triggers in the handoff (≥1 hire AND reviews/spend visible → full; etc.) — this logic should live in a plain deterministic function, NOT be left to the LLM to self-report, since the tier is derived from Upwork data facts, not judgment.
-- Price band calc (blend of client history + user rate history, falling back per tier).
-- Caching: `clients.last_analyzed_data_hash`, hash-match short-circuit, 30-day soft TTL, manual refresh action.
-- Wire into the M8 extension screens (real data replaces mock).
+**Scope, as built**
+- No content-script/injected panel: the popup itself runs the scrape on demand via `chrome.scripting.executeScript` against the active tab when it's a real Upwork job page, no persistent content script needed for this milestone (M8's popup shell already existed, this reuses it directly).
+- `extension/src/lib/scrape.ts`: `scrapeUpworkJobPage()`, verified live against real Upwork job pages 2026-08-03 (both logged out): job title from the page's one `<h1>`, description from `[data-test="Description"]` (a real, stable QA hook Upwork exposes), the "About the client" sidebar has no such hooks so it's parsed by known UI-copy label patterns (`Member since`, `total spent`, `N hires, N active`), more stable across deploys than internal class names. Payment-verified and star rating only render for a logged-in viewer (confirmed absent when logged out, no Upwork account available to verify that branch), read defensively, `null` if not found rather than assumed.
+- `lib/client-analysis/tier.ts`: `computeConfidenceTier()`, pure and deterministic, not LLM, per the build-plan's own note that tier must come from facts not judgment. `full` requires all three hard signals (payment verified, spend > 0, hires ≥ 1); `insufficient` is the true absence of all three; `low` is everything between.
+- `lib/llm/client-analysis.ts`: `analyzeClient()`, `gpt-5-nano` + `generateObject` + zod (OpenAI, not LangChain/Anthropic, same stack decision as M3-M5). `tier === "insufficient"` short-circuits deterministically before any LLM call, verdict `"New · Unverified"`, no fabricated reasoning. Otherwise the LLM produces `{verdict, reasoning, priceBandMin/Max/Note}` from the job post, the tier/signals, and the freelancer's own rate history, explicitly instructed never to invent this specific client's average rate paid (that data isn't obtainable, see deviation below).
+- `app/api/extension/analyze-client/route.ts`: Bearer-token-authenticated (see deviation below), sha256 hash of `{postedBudget, signals}` short-circuits (cached, no LLM call) if unchanged and `last_analyzed_at` within 30 days, else runs tier + LLM and upserts `clients` via `lib/db/clients.ts`'s new `findClientByUpworkUrl`/`upsertClientAnalysis`.
+- `lib/actions/rates.ts` + `RateHistoryScreen` wired to real data (`auth.users.user_metadata.rate_history`, same per-user-singleton pattern as M3/M7): this was still 100% mock since M1 (flagged then as "unreconciled"), needed now as a real input to the price-band blend.
 
-**Exclusions:** proposal drafting, meetings, agent runtime — this milestone is client analysis only.
+**Discovered during build, deviates from the original spec:**
+- **No client identity is exposed to scraping at all**, logged in or out: no client ID, no company name, no profile link anywhere on the job page. `clients.upwork_url` (the job's own URL) is the dedupe key instead of a true cross-job client identity; caching is job-page-scoped, which is exactly what the exit criterion asks for ("second view of the same page") but isn't what "one client, many job posts" would ideally want. `clients.name` is set to the job title, since there's no real client/company name to use and fabricating one would violate the app's own rule.
+- **"Avg rate paid by this specific client" (shown in the M8 design mock) is not real, obtainable data.** Upwork does not expose a client's average rate paid to a non-applicant, logged in or out, confirmed empirically. The price band is instead blended from the job's own posted budget (when present) and the freelancer's own rate history only, never a fabricated per-client number, the LLM prompt explicitly forbids inventing one.
+- **Auth bridge, not in the original scope bullets:** the extension is a separate origin with no session cookie and can't safely embed `OPENAI_API_KEY`. Added a small `extension_tokens` table (owner_id, token) and a Settings → Integrations "Browser extension" card (generate/show-once Bearer token, same trust level as `GITHUB_TOKEN`), pasted into the extension's sign-in screen, stored in `chrome.storage.local`. `proxy.ts`'s auth gate needed the same `/api/extension/` exclusion M4 already needed for `/api/inngest` and `/api/webhooks/`, same bug class, caught before it shipped this time.
+- Root `tsconfig.json` picked up `extension/**` for the first time this milestone (nobody had run `tsc` from repo root touching extension files before): excluded it, same as `eslint.config.mjs`, since it's a fully separate Plasmo project with its own tsconfig/build.
+- M8's mock-data dev switcher (`MOCK SCENARIO`) stays intact for demo purposes; a new `Auto (real)` option drives everything from the real token + real active-tab scrape instead. Proposal and Insights tabs stay mock-only in `Auto` mode too, correctly excluded from this milestone's scope.
 
-**Exit criteria:** for a real Upwork job page, the extension shows the correct tier, correct verdict badge, correct price band (or absence of one), and cache correctly short-circuits on a second view of the same unchanged page.
+**Exclusions:** proposal drafting, meetings, agent runtime, all untouched. No persistent content script (not needed, popup-time scraping covers the exit criterion).
+
+**Exit criteria, verified 2026-08-03:** real Upwork job pages inspected live in-browser to ground the scraper's selectors (not guessed). `scrapeUpworkJobPage()` run directly against a real, live job page (title, description, `$8.2K total spent`, `16 hires`, `Member since Apr 15, 2024` all extracted correctly). The real signed-in test account generated a real extension token via Settings → Integrations; `/api/extension/analyze-client` called directly (curl, same reasoning as M7's staged Inngest test: verifying through the seams actually reachable, since loading an unpacked extension needs a native OS file-picker step that isn't automatable here) confirmed: full tier → `BID` with a price band from the posted budget; low tier (real scraped signals, no payment-verified) → `MAYBE`, no fabricated price band; insufficient tier → deterministic `New · Unverified`, zero LLM cost; a repeat call with identical signals returned `cached: true`; an invalid token returned 401; adding a real rate-history entry via the real Settings UI and re-analyzing a fresh job correctly blended it into the suggested price band when no budget was posted. All `clients` rows matched the API responses exactly via direct DB query. All test data (4 `clients` rows, the extension token, the rate-history entry) deleted/reset afterward. `tsc`/`eslint`/`npm run build` (main app) and `tsc`/`plasmo build` (extension) all clean.
 
 ---
 

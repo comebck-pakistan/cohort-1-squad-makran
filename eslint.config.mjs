@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "web-designs/**",
     // Supabase CLI's local runtime state (edge-runtime bootstrap script etc).
     "supabase/.temp/**",
+    // Standalone Plasmo project, own package.json/tsconfig/build, not part of this app.
+    "extension/**",
   ]),
 ]);
 

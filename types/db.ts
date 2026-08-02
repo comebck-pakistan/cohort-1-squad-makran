@@ -21,6 +21,8 @@ export type ClientRow = Omit<Tables["clients"]["Row"], "confidence_tier" | "verd
 
 export type ClientContactRow = Tables["client_contacts"]["Row"];
 
+export type ExtensionTokenRow = Tables["extension_tokens"]["Row"];
+
 export type IntegrationCategory = "repo" | "calendar";
 export type IntegrationProvider = "github" | "gitlab" | "google_calendar";
 export type IntegrationStatus = "connected" | "error" | "disconnected";

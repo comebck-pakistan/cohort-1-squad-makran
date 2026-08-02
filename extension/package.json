@@ -2,7 +2,7 @@
   "name": "agentic-os-extension",
   "displayName": "Agentic OS",
   "version": "0.1.0",
-  "description": "Client analysis, proposal drafting, and win-rate insights for Upwork, inline in the browser (M8: mock data only).",
+  "description": "Client analysis, proposal drafting, and win-rate insights for Upwork, inline in the browser.",
   "author": "Agentic OS",
   "scripts": {
     "dev": "plasmo dev",
@@ -24,8 +24,11 @@
     "typescript": "^5"
   },
   "manifest": {
+    "permissions": ["storage", "scripting", "activeTab"],
     "host_permissions": [
-      "https://*.upwork.com/*"
+      "https://*.upwork.com/*",
+      "http://localhost:3000/*",
+      "http://127.0.0.1:3000/*"
     ]
   }
 }

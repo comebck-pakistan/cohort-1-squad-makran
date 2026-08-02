@@ -174,6 +174,24 @@ export type Database = {
         }
         Relationships: []
       }
+      extension_tokens: {
+        Row: {
+          created_at: string
+          owner_id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          owner_id: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          owner_id?: string
+          token?: string
+        }
+        Relationships: []
+      }
       integrations: {
         Row: {
           account_label: string | null

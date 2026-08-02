@@ -88,3 +88,13 @@ Everything else needed for M7 (SMTP delivery) is already covered by M4's `SMTP_*
 **Preferences are stored on `auth.users.user_metadata.notification_prefs`**, same pattern as M3's voice-profile survey answers: a per-user singleton, no new table. See `lib/notifications.ts` for the shape and defaults.
 
 **In-app delivery is not built.** The per-trigger "In-app" toggles on Settings, Notifications are real (saved to and loaded from `user_metadata`), but there's no notification-center screen to actually deliver to, none of the 18 designed screens is one. Only email delivery (via `lib/mail.ts`, Nodemailer/Gmail SMTP, same as M4's briefing emails) is real.
+
+## M9: Explain the Client
+
+No new hard external dependency, real client analysis reuses `OPENAI_API_KEY` from M3.
+
+**Extension → backend auth:** the Chrome extension is a separate origin with no session cookie, and can't safely embed `OPENAI_API_KEY`, so it authenticates to `/api/extension/analyze-client` with a Bearer token instead. Generate one in the running app at Settings → Integrations → "Browser extension" → Generate token (shown once, copy it), then paste it into the extension popup's sign-in screen. Stored in `extension_tokens` (owner_id, token), same trust level as `GITHUB_TOKEN`, generating a new one invalidates the old.
+
+**Extension's own app URL:** `extension/src/lib/api.ts` defaults to `http://localhost:3000`. No `.env` file in `extension/` (same permission wall as the main app's `.env.local`), override via `PLASMO_PUBLIC_APP_URL` in your shell if needed.
+
+**Real, unavoidable data gap:** Upwork does not expose a client's average rate paid, or any client identity (name, company, profile link) to a non-applicant viewer, logged in or out, confirmed empirically against real job pages. Price bands are only ever derived from the job's own posted budget and the freelancer's own rate history (Settings → Rate history, wired to real data this milestone too), never a fabricated per-client number.
