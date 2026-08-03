@@ -29,10 +29,6 @@ export function LandingScreen() {
           <a href="#how" className={styles.navLink}>
             How it works
           </a>
-          {/* Pricing page not yet designed (open question, handoff §6). Dangling link kept as-is. */}
-          <a href="#" className={styles.navLink}>
-            Pricing
-          </a>
           <Link href="/sign-in">
             <Button variant="secondary">Sign in</Button>
           </Link>
@@ -220,17 +216,6 @@ export function LandingScreen() {
 
       <div className={styles.footer}>
         <span className={styles.footerBrand}>Agentic OS</span>
-        <div className={styles.footerLinks}>
-          <a href="#" className={styles.footerLink}>
-            Privacy
-          </a>
-          <a href="#" className={styles.footerLink}>
-            Terms
-          </a>
-          <a href="#" className={styles.footerLink}>
-            Contact
-          </a>
-        </div>
       </div>
 
       {toast && <div className={styles.toast}>{toast}</div>}

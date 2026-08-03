@@ -311,7 +311,6 @@ Also: since no error states existed yet (Section 6 open question), an error/empt
 
 Carried over from the original handoff, unresolved by this plan — flag these to Claude rather than letting it assume:
 - "Communication style" block in pre-meeting briefing — LLM-generated-and-cached at analysis time, or a user-editable notes field? Needs a decision before M4 (Meetings pipeline).
-- Pricing page — no model decided; not blocking for build, but the landing page has a dangling nav link.
 
 ---
 

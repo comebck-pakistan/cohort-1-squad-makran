@@ -208,7 +208,6 @@ agentic-os/
 - **Proposals page (web app) not designed.** The nav rail includes "Proposals" but no screen was prompted. Needs: proposal list with state chips, draft/sent/won/lost filters, link to outcome capture modal.
 - **Clients list page not designed.** Client detail (Screen 17) exists but there's no clients index/list screen.
 - **No error states designed** for any screen (e.g. webhook failure, Recall.ai bot failed to join, GitHub OAuth error, Whisper fallback failure).
-- **Pricing strategy undefined** — landing page mentions "Pricing" nav link but no pricing page or model has been decided.
 - **"Communication style" block in pre-meeting briefing** — the spec doesn't say where this data comes from. Currently shown as static text in the design. Needs a decision: is it LLM-generated at analysis time and cached? Or a user-editable notes field per client?
 
 ---

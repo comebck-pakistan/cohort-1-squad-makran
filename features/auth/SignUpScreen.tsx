@@ -106,10 +106,7 @@ export function SignUpScreen() {
           <div className={styles.switchRow}>
             Already have an account? <Link href="/sign-in">Sign in</Link>
           </div>
-          <div className={styles.legalText}>
-            By creating an account you agree to our <a href="#">Terms</a> and{" "}
-            <a href="#">Privacy Policy</a>.
-          </div>
+          <div className={styles.legalText}>By creating an account you agree to our Terms and Privacy Policy.</div>
         </>
       ) : (
         <>
