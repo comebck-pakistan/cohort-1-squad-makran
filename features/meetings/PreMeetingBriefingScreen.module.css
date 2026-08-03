@@ -136,6 +136,58 @@
   color: var(--ink-2);
 }
 
+.commStyleEdit {
+  display: inline;
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--signal);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.commStyleInput {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--base);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+}
+
+.commStyleActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.commStyleSave {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--signal);
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.commStyleCancel {
+  font-size: 12px;
+  color: var(--ink-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 4px;
+}
+
 .pastList {
   display: flex;
   flex-direction: column;

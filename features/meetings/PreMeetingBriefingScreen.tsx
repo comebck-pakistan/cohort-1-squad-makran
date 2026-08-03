@@ -7,16 +7,9 @@ import { ConfidenceTag } from "@/components/epistemic/ConfidenceTag";
 import { PriceBand } from "@/components/epistemic/PriceBand";
 import { StateChip } from "@/components/state/StateChip";
 import { formatDateTime } from "@/lib/format";
+import { saveCommunicationNotes } from "@/lib/actions/clients";
 import type { MeetingRow, ClientRow, ClientContactRow, ProposalRow } from "@/types/db";
 import styles from "./PreMeetingBriefingScreen.module.css";
-
-/**
- * "Communication style" copy below is static placeholder content. Its real data
- * source (LLM-generated-and-cached vs. a user-editable notes field) is an open
- * question flagged in docs/agentic-os-handoff.md §6, to be resolved before M6.
- */
-const COMMUNICATION_STYLE =
-  "Responds quickly. Prefers bullet-point briefs over long prose. Has flagged scope creep in past projects; come with a clear change-request process.";
 
 interface PreMeetingBriefingScreenProps {
   meeting: MeetingRow | null;
@@ -27,10 +20,29 @@ interface PreMeetingBriefingScreenProps {
 
 export function PreMeetingBriefingScreen({ meeting, client, contacts, pastProposals }: PreMeetingBriefingScreenProps) {
   const [toast, setToast] = useState<string | null>(null);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState(client?.communication_notes ?? "");
+  const [notes, setNotes] = useState(client?.communication_notes ?? "");
+  const [saving, setSaving] = useState(false);
 
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(null), 2400);
+  }
+
+  async function saveNotes() {
+    if (!client) return;
+    setSaving(true);
+    try {
+      await saveCommunicationNotes(client.id, notesDraft);
+      setNotes(notesDraft.trim());
+      setEditingNotes(false);
+      showToast("Notes saved.");
+    } catch {
+      showToast("Could not save notes. Try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!meeting) {
@@ -107,7 +119,46 @@ export function PreMeetingBriefingScreen({ meeting, client, contacts, pastPropos
 
               <div className={styles.blockNoBorder}>
                 <div className={styles.blockEyebrow}>Communication style</div>
-                <div className={styles.commStyle}>{COMMUNICATION_STYLE}</div>
+                {editingNotes ? (
+                  <>
+                    <textarea
+                      className={styles.commStyleInput}
+                      value={notesDraft}
+                      onChange={(e) => setNotesDraft(e.target.value)}
+                      placeholder="e.g. Prefers async updates over calls, responds fastest on Slack"
+                      autoFocus
+                    />
+                    <div className={styles.commStyleActions}>
+                      <button
+                        className={styles.commStyleCancel}
+                        onClick={() => {
+                          setNotesDraft(notes);
+                          setEditingNotes(false);
+                        }}
+                        disabled={saving}
+                      >
+                        Cancel
+                      </button>
+                      <button className={styles.commStyleSave} onClick={saveNotes} disabled={saving}>
+                        {saving ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </>
+                ) : notes ? (
+                  <div className={styles.commStyle}>
+                    {notes}
+                    <button className={styles.commStyleEdit} onClick={() => setEditingNotes(true)}>
+                      Edit
+                    </button>
+                  </div>
+                ) : (
+                  <div className={styles.priceNote}>
+                    No notes yet.{" "}
+                    <button className={styles.commStyleEdit} onClick={() => setEditingNotes(true)}>
+                      Add what you know about how they like to communicate.
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className={styles.blockNoBorder}>
@@ -175,7 +226,7 @@ export function PreMeetingBriefingScreen({ meeting, client, contacts, pastPropos
 
                 <div className={styles.emailBlockNoBorder}>
                   <div className={styles.emailBlockEyebrow}>Communication style</div>
-                  <div className={styles.emailFact}>{COMMUNICATION_STYLE}</div>
+                  <div className={styles.emailFact}>{notes || "No notes yet."}</div>
                 </div>
 
                 <div className={styles.emailBlockNoBorder}>

@@ -109,6 +109,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          communication_notes: string | null
           confidence_tier: string
           created_at: string
           hires_count: number
@@ -129,6 +130,7 @@ export type Database = {
           verdict: string | null
         }
         Insert: {
+          communication_notes?: string | null
           confidence_tier?: string
           created_at?: string
           hires_count?: number
@@ -149,6 +151,7 @@ export type Database = {
           verdict?: string | null
         }
         Update: {
+          communication_notes?: string | null
           confidence_tier?: string
           created_at?: string
           hires_count?: number
