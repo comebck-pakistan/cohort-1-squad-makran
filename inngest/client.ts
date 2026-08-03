@@ -1,6 +1,6 @@
 import { Inngest } from "inngest";
 
-export const inngest = new Inngest({ id: "agentic-os", isDev: process.env.NODE_ENV !== "production" });
+export const inngest = new Inngest({ id: "solvo", isDev: process.env.NODE_ENV !== "production" });
 
 /** transcript is only set for manual_paste (typed at creation time); bot_skribby fetches it via Skribby's API inside the function. */
 export interface MeetingReadyForProcessing {

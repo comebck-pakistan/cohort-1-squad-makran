@@ -10,7 +10,7 @@ interface OnboardingHeaderProps {
 export function OnboardingHeader({ current }: OnboardingHeaderProps) {
   return (
     <div className={styles.header}>
-      <div className={styles.brand}>Agentic OS</div>
+      <div className={styles.brand}>Solvo</div>
       <div className={styles.steps}>
         {STEPS.map((label, i) => (
           <div key={label} style={{ display: "flex", alignItems: "center" }}>

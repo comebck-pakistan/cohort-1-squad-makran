@@ -26,7 +26,7 @@ export function NavRail({ notifications }: NavRailProps) {
   return (
     <nav className={styles.rail}>
       <div className={styles.brandRow}>
-        <div className={styles.brand}>Agentic OS</div>
+        <div className={styles.brand}>Solvo</div>
         <NotificationBell initialNotifications={notifications} />
       </div>
       {NAV.map((n) => {

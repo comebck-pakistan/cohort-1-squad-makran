@@ -149,7 +149,7 @@ export function IntegrationsScreen({
         </div>
         <div className={styles.subNote}>
           OAuth (scopes: repo, workflow) · PRs opened under your GitHub account · commits
-          attributed to Agentic OS Agent &lt;agent@agentcos.dev&gt;
+          attributed to Solvo Agent &lt;agent@solvo.dev&gt;
         </div>
 
         <div className={styles.divider} />

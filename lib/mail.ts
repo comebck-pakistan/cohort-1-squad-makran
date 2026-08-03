@@ -21,7 +21,7 @@ export interface SendEmailInput {
 
 export async function sendEmail(input: SendEmailInput): Promise<void> {
   await transporter.sendMail({
-    from: process.env.SMTP_FROM ?? "Agentic OS <notifications@agentcos.dev>",
+    from: process.env.SMTP_FROM ?? "Solvo <notifications@solvo.dev>",
     to: input.to,
     subject: input.subject,
     html: input.html,

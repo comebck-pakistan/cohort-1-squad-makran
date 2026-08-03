@@ -29,7 +29,7 @@ export const PROPOSAL_SCENARIOS: Record<"inVoice" | "surveyFallback", ProposalSc
     rateNote: "Consider anchoring at $75–$90/hr based on this client's history.",
     rateSource: "from client avg rate paid",
     gateText: "Review before sending, you paste this into Upwork manually.",
-    primaryButtonSub: "Copies to clipboard · marks proposal as Sent in Agentic OS",
+    primaryButtonSub: "Copies to clipboard · marks proposal as Sent in Solvo",
     secondaryLabels: ["Regenerate", "Start over"],
   },
   surveyFallback: {
@@ -47,7 +47,7 @@ export const PROPOSAL_SCENARIOS: Record<"inVoice" | "surveyFallback", ProposalSc
     rateNote: "Consider anchoring at $60–$80/hr based on the posted budget.",
     rateSource: "from posted budget only · no client history",
     gateText: "Review carefully, this draft reflects preferences, not your past writing. Edit before sending.",
-    primaryButtonSub: "Copies to clipboard · marks proposal as Sent in Agentic OS",
+    primaryButtonSub: "Copies to clipboard · marks proposal as Sent in Solvo",
     secondaryLabels: ["Regenerate", "Edit preferences"],
   },
 };

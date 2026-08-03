@@ -5,7 +5,7 @@
 
 ### 1. PROJECT / GOAL
 
-Building "Agentic OS for Freelancers" — a two-surface product (Next.js web app + Chrome extension) that takes a freelancer from a job posting to a merged PR. The five core features are: Explain the Client (Upwork client analysis + bid verdict), Voice-of-Past-Wins Proposal Drafter, Meetings → Tickets Pipeline (Recall.ai bot + transcript → draft tickets), Agent Runtime (GitHub Actions + plan/approve/execute/review loop), and Conversion Intelligence Dashboard (win/loss pattern analysis). Design philosophy: honest about confidence and data sufficiency, never fakes certainty, human approves at every meaningful gate. v1.0 is solo-only, no teams.
+Building "Solvo for Freelancers" — a two-surface product (Next.js web app + Chrome extension) that takes a freelancer from a job posting to a merged PR. The five core features are: Explain the Client (Upwork client analysis + bid verdict), Voice-of-Past-Wins Proposal Drafter, Meetings → Tickets Pipeline (Recall.ai bot + transcript → draft tickets), Agent Runtime (GitHub Actions + plan/approve/execute/review loop), and Conversion Intelligence Dashboard (win/loss pattern analysis). Design philosophy: honest about confidence and data sufficiency, never fakes certainty, human approves at every meaningful gate. v1.0 is solo-only, no teams.
 
 ---
 
@@ -42,7 +42,7 @@ Building "Agentic OS for Freelancers" — a two-surface product (Next.js web app
 ### 3. KEY DECISIONS MADE
 
 - **owner_id not user_id** on every table — allows future workspace concept without migration
-- **OAuth (not GitHub App)** for GitHub integration — simpler, tradeoff accepted: broad repo scope, PRs appear under user's account. Mitigation: git commit author set to `Agentic OS Agent <agent@agentcos.dev>`
+- **OAuth (not GitHub App)** for GitHub integration — simpler, tradeoff accepted: broad repo scope, PRs appear under user's account. Mitigation: git commit author set to `Solvo Agent <agent@solvo.dev>`
 - **Recall.ai** for meeting bot (not Skribby, not self-hosted Attendee) — native caption transcription removes per-minute AI transcription cost, only bot-usage fee applies
 - **Recall.ai Calendar Integration V1** (not V2) — simpler, Recall handles scheduling lifecycle
 - **pgvector inside Supabase** instead of Qdrant — eliminates a separate service, same result for proposal embedding similarity search
@@ -88,7 +88,7 @@ Building "Agentic OS for Freelancers" — a two-surface product (Next.js web app
 - Synthetic data never blended with real data
 - Survey-fallback proposals never labeled "in your voice"
 - No auto-bidding, no auto-send of proposals
-- Commits always attributed to `Agentic OS Agent <agent@agentcos.dev>` regardless of OAuth identity
+- Commits always attributed to `Solvo Agent <agent@solvo.dev>` regardless of OAuth identity
 
 **Things to avoid:**
 - No Qdrant (use pgvector)
@@ -103,7 +103,7 @@ Building "Agentic OS for Freelancers" — a two-surface product (Next.js web app
 
 ### 5. IMPORTANT FACTS / DATA
 
-**Product name:** Agentic OS for Freelancers
+**Product name:** Solvo for Freelancers
 **Version:** v1.0
 **Surfaces:** Web command center (Next.js) + Chrome extension (Plasmo, Upwork only)
 
@@ -127,7 +127,7 @@ Building "Agentic OS for Freelancers" — a two-surface product (Next.js web app
 - `repos.provider` denormalized (not just via join)
 - `repos.is_default` boolean
 
-**Git commit identity:** `Agentic OS Agent <agent@agentcos.dev>`
+**Git commit identity:** `Solvo Agent <agent@solvo.dev>`
 
 **Confidence tier triggers (exact from spec):**
 - Full analysis: ≥1 hire AND (reviews visible OR spend history visible)
@@ -217,7 +217,7 @@ agentic-os/
 #### ARTIFACT 1: design-system.md (complete, locked)
 
 ````markdown
-# Agentic OS for Freelancers — Design System v1.0
+# Solvo for Freelancers — Design System v1.0
 
 > Paste this document into Claude Design before any screen prompt.
 
@@ -466,7 +466,7 @@ These have not been written yet. Ask the new assistant to write and verify each 
 ### 8. SUGGESTED FIRST MESSAGE FOR NEW CHAT
 
 ````
-I'm building "Agentic OS for Freelancers" — a Next.js web app + Chrome extension (Plasmo) that takes a freelancer from job posting to merged PR, with a human approval gate at every meaningful step. The full feature spec, design system, and all decisions are locked. Here's the complete context:
+I'm building "Solvo for Freelancers" — a Next.js web app + Chrome extension (Plasmo) that takes a freelancer from job posting to merged PR, with a human approval gate at every meaningful step. The full feature spec, design system, and all decisions are locked. Here's the complete context:
 
 [PASTE ENTIRE HANDOFF ABOVE]
 

@@ -145,7 +145,7 @@ export function PreMeetingBriefingScreen({ meeting, client, contacts, pastPropos
             <div className={styles.emailSubjectNote}>Subject: &ldquo;Briefing: {meeting.title} · {formatDateTime(meeting.starts_at)}&rdquo;</div>
             <div className={styles.emailShell}>
               <div className={styles.emailHeader}>
-                <span className={styles.emailBrand}>Agentic OS</span>
+                <span className={styles.emailBrand}>Solvo</span>
               </div>
               <div className={styles.emailAccent} />
               <div className={styles.emailBody}>
@@ -201,7 +201,7 @@ export function PreMeetingBriefingScreen({ meeting, client, contacts, pastPropos
               </div>
               <div className={styles.emailFooter}>
                 <span className={styles.emailFooterText}>
-                  Agentic OS · Sent via Nodemailer · Manage notifications in Settings
+                  Solvo · Sent via Nodemailer · Manage notifications in Settings
                 </span>
               </div>
             </div>

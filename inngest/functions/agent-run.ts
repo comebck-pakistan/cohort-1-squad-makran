@@ -181,7 +181,7 @@ export const agentRun = inngest.createFunction(
           head: branch,
           base: repoInfo.defaultBranch,
           title: ticket.title,
-          body: `${plan.summary}\n\nOpened by Agentic OS Agent. Attempt ${attempt} of ${MAX_ATTEMPTS}.`,
+          body: `${plan.summary}\n\nOpened by Solvo Agent. Attempt ${attempt} of ${MAX_ATTEMPTS}.`,
         })
       );
 

@@ -32,7 +32,7 @@ export async function createSkribbyBot(input: CreateBotInput): Promise<SkribbyBo
     body: JSON.stringify({
       meeting_url: input.meetingUrl,
       service: detectService(input.meetingUrl),
-      bot_name: input.botName ?? "Agentic OS Notetaker",
+      bot_name: input.botName ?? "Solvo Notetaker",
       transcription_model: "groq/whisper-large-v3-turbo",
       webhook_url: `${APP_URL}/api/webhooks/skribby`,
     }),

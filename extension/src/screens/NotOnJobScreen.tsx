@@ -27,7 +27,7 @@ export function NotOnJobScreen() {
         Browse Upwork jobs →
       </button>
       <div style={{ fontSize: 12, color: "var(--ink-4)" }}>
-        Or open Agentic OS <a href="#">dashboard</a>
+        Or open Solvo <a href="#">dashboard</a>
       </div>
     </div>
   );

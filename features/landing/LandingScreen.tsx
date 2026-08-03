@@ -24,7 +24,7 @@ export function LandingScreen() {
   return (
     <div className={styles.page}>
       <nav className={styles.nav}>
-        <div className={styles.brand}>Agentic OS</div>
+        <div className={styles.brand}>Solvo</div>
         <div className={styles.navRight}>
           <a href="#how" className={styles.navLink}>
             How it works
@@ -43,7 +43,7 @@ export function LandingScreen() {
         <div className={styles.heroLine}>From job post to merged PR:</div>
         <div className={[styles.heroLine, styles.heroLineSignal].join(" ")}>you approve every step.</div>
         <div className={styles.heroBody}>
-          Agentic OS researches clients, drafts proposals in your voice, captures meetings
+          Solvo researches clients, drafts proposals in your voice, captures meetings
           first-hand, converts them to tickets, and runs the agent, with a human gate at every
           meaningful decision.
         </div>
@@ -215,7 +215,7 @@ export function LandingScreen() {
       </div>
 
       <div className={styles.footer}>
-        <span className={styles.footerBrand}>Agentic OS</span>
+        <span className={styles.footerBrand}>Solvo</span>
       </div>
 
       {toast && <div className={styles.toast}>{toast}</div>}

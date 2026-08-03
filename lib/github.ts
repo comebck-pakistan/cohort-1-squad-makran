@@ -1,5 +1,5 @@
 const API = "https://api.github.com";
-const AGENT_AUTHOR = { name: "Agentic OS Agent", email: "agent@agentcos.dev" };
+const AGENT_AUTHOR = { name: "Solvo Agent", email: "agent@solvo.dev" };
 
 function headers(token: string) {
   return {
