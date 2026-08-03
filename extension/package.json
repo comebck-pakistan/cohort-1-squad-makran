@@ -1,9 +1,9 @@
 {
-  "name": "agentic-os-extension",
-  "displayName": "Agentic OS",
+  "name": "solvo-extension",
+  "displayName": "Solvo",
   "version": "0.1.0",
   "description": "Client analysis, proposal drafting, and win-rate insights for Upwork, inline in the browser.",
-  "author": "Agentic OS",
+  "author": "Solvo",
   "scripts": {
     "dev": "plasmo dev",
     "build": "plasmo build",

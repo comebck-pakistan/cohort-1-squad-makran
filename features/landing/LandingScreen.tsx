@@ -24,14 +24,10 @@ export function LandingScreen() {
   return (
     <div className={styles.page}>
       <nav className={styles.nav}>
-        <div className={styles.brand}>Agentic OS</div>
+        <div className={styles.brand}>Solvo</div>
         <div className={styles.navRight}>
           <a href="#how" className={styles.navLink}>
             How it works
-          </a>
-          {/* Pricing page not yet designed (open question, handoff §6). Dangling link kept as-is. */}
-          <a href="#" className={styles.navLink}>
-            Pricing
           </a>
           <Link href="/sign-in">
             <Button variant="secondary">Sign in</Button>
@@ -47,7 +43,7 @@ export function LandingScreen() {
         <div className={styles.heroLine}>From job post to merged PR:</div>
         <div className={[styles.heroLine, styles.heroLineSignal].join(" ")}>you approve every step.</div>
         <div className={styles.heroBody}>
-          Agentic OS researches clients, drafts proposals in your voice, captures meetings
+          Solvo researches clients, drafts proposals in your voice, captures meetings
           first-hand, converts them to tickets, and runs the agent, with a human gate at every
           meaningful decision.
         </div>
@@ -101,7 +97,7 @@ export function LandingScreen() {
             <div className={styles.stepEyebrow}>03 · Capture</div>
             <div className={styles.stepTitle}>Meetings → tickets</div>
             <div className={styles.stepBody}>
-              A bot joins your call first-hand via Recall.ai, no manual upload. You review draft
+              A bot joins your call first-hand via Skribby, no manual upload. You review draft
               tickets, merge or split, then confirm. Tickets only exist after your approval.
             </div>
           </Card>
@@ -155,15 +151,15 @@ export function LandingScreen() {
           <div>
             <div className={styles.featureTitle}>Meeting bot: first-hand, no upload</div>
             <div className={styles.featureBody}>
-              Paste a Zoom or Google Meet link. A Recall.ai bot joins as a participant. Transcript
-              arrives after the call via webhook. If captions are off, it falls back to Whisper
-              automatically. You never manually export anything.
+              Paste a Zoom or Google Meet link. A Skribby bot joins as a participant. Transcript
+              arrives after the call via webhook. If transcription comes back empty, it falls
+              back to Whisper automatically. You never manually export anything.
             </div>
           </div>
           <div className={styles.meetingCard}>
             <div className={styles.meetingBar} />
             <div className={styles.meetingTitle}>Onboarding call: Thorn Studio</div>
-            <div className={styles.meetingNote}>Started 18 min ago · Recall bot joined · transcript processing</div>
+            <div className={styles.meetingNote}>Started 18 min ago · Skribby bot joined · transcript processing</div>
             <div className={styles.meetingStatus}>
               <span className={styles.meetingDot} />
               <span className={styles.meetingStatusLabel}>Processing</span>
@@ -219,18 +215,7 @@ export function LandingScreen() {
       </div>
 
       <div className={styles.footer}>
-        <span className={styles.footerBrand}>Agentic OS</span>
-        <div className={styles.footerLinks}>
-          <a href="#" className={styles.footerLink}>
-            Privacy
-          </a>
-          <a href="#" className={styles.footerLink}>
-            Terms
-          </a>
-          <a href="#" className={styles.footerLink}>
-            Contact
-          </a>
-        </div>
+        <span className={styles.footerBrand}>Solvo</span>
       </div>
 
       {toast && <div className={styles.toast}>{toast}</div>}

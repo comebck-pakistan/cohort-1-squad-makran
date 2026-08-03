@@ -27,7 +27,7 @@ export function OutcomeCaptureModal({ outcome, proposalTitle, clientName, onClos
   const reasons = isWon ? WON_REASONS : LOST_REASONS;
   const [reason, setReason] = useState<string>(reasons[0]);
   const [notes, setNotes] = useState("");
-  const [date, setDate] = useState("Mon, Aug 3, 2026");
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   return (
@@ -97,7 +97,12 @@ export function OutcomeCaptureModal({ outcome, proposalTitle, clientName, onClos
 
           <div className={styles.field}>
             <div className={styles.fieldLabel}>When</div>
-            <input className={styles.plainInput} value={date} onChange={(e) => setDate(e.target.value)} />
+            <input
+              type="date"
+              className={styles.plainInput}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
 
           <div className={styles.footer}>

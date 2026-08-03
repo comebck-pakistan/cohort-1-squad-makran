@@ -8,6 +8,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { generatePlan, generateFileChanges, formatPlanSummary } from "@/lib/llm/agent";
 import { ensureBranch, commitFiles, openPullRequest, mergePullRequest, getCheckStatus, verifyRepoAccess } from "@/lib/github";
 import { updateTicket } from "@/lib/db/tickets";
+import { getGithubAccessToken } from "@/lib/db/integrations";
 import type { TicketRow } from "@/types/db";
 
 const MAX_ATTEMPTS = 3;
@@ -68,6 +69,12 @@ export const agentRun = inngest.createFunction(
       if (error) throw error;
       return data;
     });
+
+    const githubToken = await step.run("load-github-token", () => getGithubAccessToken(supabase, ticket.owner_id));
+    if (!githubToken) {
+      await step.run("no-github-token-needs-human", () => setTicketState(supabase, ticketId, { state: "needs_human" }));
+      return { status: "needs_human" as const, reason: "GitHub is not connected." };
+    }
 
     let feedback: string | undefined;
 
@@ -131,16 +138,16 @@ export const agentRun = inngest.createFunction(
 
       await step.run(`set-executing-${attempt}`, () => setTicketState(supabase, ticketId, { state: "executing" }));
 
-      const repoInfo = await step.run(`repo-info-${attempt}`, () => verifyRepoAccess(repo.full_name));
+      const repoInfo = await step.run(`repo-info-${attempt}`, () => verifyRepoAccess(githubToken, repo.full_name));
       const branch = `agent/${ticketId}-${attempt}`;
-      await step.run(`branch-${attempt}`, () => ensureBranch(repo.full_name, repoInfo.defaultBranch, branch));
+      await step.run(`branch-${attempt}`, () => ensureBranch(githubToken, repo.full_name, repoInfo.defaultBranch, branch));
       await step.run(`log-branch-${attempt}`, () => appendLog(supabase, run.id, `Checked out branch: ${branch}`, true));
 
       const changes = await step.run(`generate-changes-${attempt}`, () =>
         generateFileChanges({ ticketTitle: ticket.title, ticketDescription: ticket.plan_summary ?? "", plan })
       );
 
-      await step.run(`commit-${attempt}`, () => commitFiles(repo.full_name, branch, changes.files, changes.commitMessage));
+      await step.run(`commit-${attempt}`, () => commitFiles(githubToken, repo.full_name, branch, changes.files, changes.commitMessage));
       await step.run(`log-commit-${attempt}`, async () => {
         await supabase
           .from("agent_runs")
@@ -151,7 +158,7 @@ export const agentRun = inngest.createFunction(
 
       let ciStatus: "pending" | "success" | "failure" = "pending";
       for (let poll = 0; poll < MAX_CI_POLLS; poll++) {
-        ciStatus = await step.run(`poll-ci-${attempt}-${poll}`, () => getCheckStatus(repo.full_name, branch));
+        ciStatus = await step.run(`poll-ci-${attempt}-${poll}`, () => getCheckStatus(githubToken, repo.full_name, branch));
         if (ciStatus !== "pending") break;
         await step.sleep(`ci-wait-${attempt}-${poll}`, "20s");
       }
@@ -169,12 +176,12 @@ export const agentRun = inngest.createFunction(
       }
 
       const pr = await step.run(`open-pr-${attempt}`, () =>
-        openPullRequest({
+        openPullRequest(githubToken, {
           fullName: repo.full_name,
           head: branch,
           base: repoInfo.defaultBranch,
           title: ticket.title,
-          body: `${plan.summary}\n\nOpened by Agentic OS Agent. Attempt ${attempt} of ${MAX_ATTEMPTS}.`,
+          body: `${plan.summary}\n\nOpened by Solvo Agent. Attempt ${attempt} of ${MAX_ATTEMPTS}.`,
         })
       );
 
@@ -189,7 +196,7 @@ export const agentRun = inngest.createFunction(
       const reviewData = reviewDecision?.data as TicketReviewDecision | undefined;
 
       if (reviewData?.approved) {
-        await step.run(`merge-pr-${attempt}`, () => mergePullRequest(repo.full_name, pr.number));
+        await step.run(`merge-pr-${attempt}`, () => mergePullRequest(githubToken, repo.full_name, pr.number));
         await step.run(`set-done-${attempt}`, () => setTicketState(supabase, ticketId, { state: "done" }));
         await step.run(`log-merged-${attempt}`, () => appendLog(supabase, run.id, "PR merged", true));
         return { status: "done" as const, prUrl: pr.url };

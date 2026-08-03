@@ -10,7 +10,7 @@ export function AuthShell({ children }: AuthShellProps) {
   return (
     <div className={styles.shell}>
       <div className={styles.panel}>
-        <div className={styles.brand}>Agentic OS</div>
+        <div className={styles.brand}>Solvo</div>
         {children}
       </div>
     </div>

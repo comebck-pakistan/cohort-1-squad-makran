@@ -21,7 +21,7 @@ export function PopupShell({ jobTitle, cacheLabel, activeTab, onTabChange, child
   return (
     <div className={styles.panel}>
       <div className={styles.headerTop}>
-        <div className={styles.logo}>Agentic OS</div>
+        <div className={styles.logo}>Solvo</div>
         <div className={styles.jobTitle} style={cacheLabel ? undefined : { color: "var(--ink-4)" }}>
           {jobTitle}
         </div>

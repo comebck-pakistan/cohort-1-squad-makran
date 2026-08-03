@@ -2,7 +2,7 @@ import { inngest, type MeetingReadyForProcessing } from "@/inngest/client";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ticketizeTranscript } from "@/lib/llm/ticketize";
 import { transcribeAudio } from "@/lib/llm/whisper";
-import { getRecallTranscript, getRecallRecordingUrl } from "@/lib/recall";
+import { getSkribbyTranscript, getSkribbyRecordingUrl } from "@/lib/skribby";
 
 export const ticketizeMeeting = inngest.createFunction(
   { id: "ticketize-meeting", triggers: [{ event: "meeting/ready-for-processing" }] },
@@ -19,20 +19,21 @@ export const ticketizeMeeting = inngest.createFunction(
     let transcript = providedTranscript ?? null;
     let transcriptSource: "caption" | "whisper_fallback" | "manual" = providedTranscript ? "manual" : "caption";
 
-    if (!transcript && meeting.recall_bot_id) {
-      const botId = meeting.recall_bot_id;
-      const captionResult = await step.run("fetch-caption-transcript", () => getRecallTranscript(botId));
+    if (!transcript && meeting.skribby_bot_id) {
+      const botId = meeting.skribby_bot_id;
+      const captionResult = await step.run("fetch-caption-transcript", () => getSkribbyTranscript(botId));
       if (captionResult?.text) {
         transcript = captionResult.text;
       }
     }
 
-    // Real failure mode: host had live captions off. Bot still has the recorded audio, so we
-    // re-route through Whisper instead of surfacing a dead end (docs/features.md graceful degradation).
-    if (!transcript && meeting.recall_bot_id) {
-      const botId = meeting.recall_bot_id;
+    // Real failure mode: transcription model produced nothing (silence, invalid_api_key, etc).
+    // Bot still has the recorded audio, so we re-route through Whisper instead of surfacing a
+    // dead end (docs/features.md graceful degradation).
+    if (!transcript && meeting.skribby_bot_id) {
+      const botId = meeting.skribby_bot_id;
       transcript = await step.run("transcribe-fallback", async () => {
-        const recordingUrl = await getRecallRecordingUrl(botId);
+        const recordingUrl = await getSkribbyRecordingUrl(botId);
         if (!recordingUrl) throw new Error("No recording available for Whisper fallback.");
         return transcribeAudio(new URL(recordingUrl));
       });

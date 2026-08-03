@@ -23,11 +23,12 @@ OPENAI_API_KEY=
 # (bypasses RLS, admin-level). From `npx supabase status` (SERVICE_ROLE_KEY, the JWT one).
 SUPABASE_SERVICE_ROLE_KEY=
 
-# M4: Recall.ai bot-join + calendar integration. Real account needed, no local/mock mode.
-# recall.ai -> API keys. RECALL_WEBHOOK_SECRET is the Svix signing secret from the webhook's
-# settings page, verified in app/api/webhooks/recall/route.ts.
-RECALL_API_KEY=
-RECALL_WEBHOOK_SECRET=
+# M4: Skribby bot-join. Real account needed, no local/mock mode (swapped from Recall.ai on
+# 2026-08-03, Recall.ai requires a business email to sign up). platform.skribby.io ->
+# dashboard -> API Keys. SKRIBBY_WEBHOOK_SECRET is from Settings -> Webhook Settings, verified
+# via HMAC-SHA256 in app/api/webhooks/skribby/route.ts.
+SKRIBBY_API_KEY=
+SKRIBBY_WEBHOOK_SECRET=
 
 # M4: email delivery (pre-meeting briefings, notifications). Defaults to local Mailpit
 # (127.0.0.1:54325, no auth) when unset, see the smtp_port note below. Set these for real
@@ -38,10 +39,18 @@ SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=
 
-# M5: Agent Runtime. Personal access token (classic, scopes: repo + workflow), not OAuth
-# (deviation, see M5 section below). github.com -> Settings -> Developer settings ->
-# Personal access tokens. Used server-side only, for branch/commit/PR/check-run API calls.
-GITHUB_TOKEN=
+# M5: Agent Runtime. Real per-user GitHub OAuth (Authorization Code flow, app-owned,
+# separate from Supabase Auth's own sign-in provider). Create a GitHub OAuth App at
+# github.com -> Settings -> Developer settings -> OAuth Apps, callback URL
+# http://localhost:3000/api/github/oauth/callback (must match exactly, classic OAuth
+# Apps only support one callback URL, so this can't be the same app used for
+# "Sign in with GitHub" if that one is registered against Supabase's own callback).
+GITHUB_OAUTH_CLIENT_ID=
+GITHUB_OAUTH_CLIENT_SECRET=
+
+# M5: 32-byte key (64 hex chars) used to encrypt the stored GitHub access token at rest
+# (AES-256-GCM, lib/crypto.ts). Generate with: openssl rand -hex 32
+INTEGRATION_TOKEN_ENCRYPTION_KEY=
 ```
 
 Until Google/GitHub client id + secret are filled in, those two sign-in buttons will error at redirect. OTP email sign-in works with none of this filled in beyond the Supabase URL/anon key, since local dev catches OTP emails at `http://127.0.0.1:54324` (Mailpit) instead of sending them.
@@ -62,13 +71,15 @@ The Supabase CLI does not read `.env.local` either (see below) — always run `s
 
 **Local Mailpit SMTP for Nodemailer:** `supabase/config.toml`'s `[local_smtp]` section now sets `smtp_port = 54325` (was commented out) so Nodemailer on the host can reach the same local Mailpit that Supabase Auth already uses for OTP emails, no separate mail server needed for local dev. Briefing/notification emails land at `http://127.0.0.1:54324` alongside auth emails. Requires a full `supabase stop && supabase start` to pick up (config.toml changes, not `db reset`).
 
-**Recall.ai is a hard external dependency, no local/mock substitute.** The bot-join path (`scheduleBotMeeting`, the Recall webhook receiver) needs a real `RECALL_API_KEY` and a real scheduled meeting to test end-to-end; it was built against Recall's documented API conventions but is unverified against a live account. The manual-paste path (`createManualMeeting`) needs none of this and is what's actually been verified locally.
+**Skribby is a hard external dependency, no local/mock substitute.** The bot-join path (`scheduleBotMeeting`, the Skribby webhook receiver) needs a real `SKRIBBY_API_KEY` and a real scheduled meeting to test end-to-end. Built against Skribby's documented REST API (`docs.skribby.io`): `POST /bot` to create, `GET /bot/{id}` for the finished transcript/recording, HMAC-SHA256-signed `status_update` webhooks. The manual-paste path (`createManualMeeting`) needs none of this.
+
+**Swapped from Recall.ai to Skribby on 2026-08-03.** Recall.ai's signup form rejects personal email domains (requires a business email), which the account owner doesn't have. Skribby has no such wall, same bot-join-as-participant shape, no host permission or Zoom/Meet OAuth needed. `meetings.recall_bot_id` renamed to `skribby_bot_id`, `meetings.source`'s `'bot_recall'` enum value renamed to `'bot_skribby'` (migration `20260803100000_rename_recall_to_skribby.sql`). Webhook signing changed from Recall's Svix to Skribby's own HMAC-SHA256 scheme (`X-Skribby-Signature`/`X-Skribby-Timestamp` headers, 5-minute replay tolerance).
 
 ## M5: Agent Runtime
 
-**GitHub auth deviates from the handoff's "OAuth (not GitHub App)" pick.** No token-persistence infra exists for OAuth provider tokens (Supabase Auth's GitHub sign-in doesn't request `repo` scope and doesn't durably store `provider_token` past the callback), so building real OAuth-to-repo-token plumbing was out of scope for this milestone. `GITHUB_TOKEN` (a classic PAT, scopes `repo` + `workflow`) is used instead, same external-hard-dependency pattern as `RECALL_API_KEY`. Settings -> Integrations' "Connect repo" now does a real API call (verifies the repo exists and the token can see it, then saves a `repos` row) but there's no repo picker, you type `owner/repo` directly.
+**GitHub auth is real per-user OAuth, added 2026-08-04 (originally deviated to a shared `GITHUB_TOKEN` PAT, see build-plan doc for that history).** App-owned Authorization Code flow (`app/api/github/oauth/start`, `app/api/github/oauth/callback`), independent of Supabase Auth's own "Sign in with GitHub" provider, since Supabase's `signInWithOAuth` doesn't request `repo` scope and doesn't durably persist `provider_token` past the callback, and reusing it for repo-level access would require identity-linking machinery this app doesn't have. Settings -> Integrations' "Connect with GitHub" button redirects to GitHub with `repo workflow` scope, the callback exchanges the code for an access token, looks up the authenticated login, and upserts it (AES-256-GCM encrypted, `lib/crypto.ts`) into `integrations.access_token`. `lib/github.ts`'s functions all take the token as an explicit first argument now, no module-level env read. `connectRepo()` and `agent-run.ts` both fetch the signed-in owner's decrypted token from the DB before calling GitHub; a ticket with no connected token goes straight to `needs_human`.
 
-**A real GitHub repo is required to test the loop at all**, since there's no local/mock GitHub. Connect one via Settings -> Integrations (needs `GITHUB_TOKEN` set first). For the retry-cap exit criterion (needs_human after 3 failed attempts), that repo needs a GitHub Actions workflow that always fails on `pull_request`, since the agent has no visibility into the repo's actual file contents and can't reliably "fix" a real bug, only regenerate its guess each attempt.
+**A real GitHub repo is required to test the loop at all**, since there's no local/mock GitHub. Connect via Settings -> Integrations (needs `GITHUB_OAUTH_CLIENT_ID`/`SECRET` set and the OAuth flow completed first). For the retry-cap exit criterion (needs_human after 3 failed attempts), that repo needs a GitHub Actions workflow that always fails on `pull_request`, since the agent has no visibility into the repo's actual file contents and can't reliably "fix" a real bug, only regenerate its guess each attempt.
 
 **CI status gates the execute step.** `getCheckStatus()` polls `GET /repos/{repo}/commits/{ref}/check-runs` every 20s (up to 5 min) after each commit; a repo with no CI configured at all is treated as an immediate pass (nothing to block on), so the happy-path exit criterion works without requiring you to author a workflow file, only the retry-cap criterion does.
 
@@ -93,7 +104,7 @@ Everything else needed for M7 (SMTP delivery) is already covered by M4's `SMTP_*
 
 No new hard external dependency, real client analysis reuses `OPENAI_API_KEY` from M3.
 
-**Extension → backend auth:** the Chrome extension is a separate origin with no session cookie, and can't safely embed `OPENAI_API_KEY`, so it authenticates to `/api/extension/analyze-client` with a Bearer token instead. Generate one in the running app at Settings → Integrations → "Browser extension" → Generate token (shown once, copy it), then paste it into the extension popup's sign-in screen. Stored in `extension_tokens` (owner_id, token), same trust level as `GITHUB_TOKEN`, generating a new one invalidates the old.
+**Extension → backend auth:** the Chrome extension is a separate origin with no session cookie, and can't safely embed `OPENAI_API_KEY`, so it authenticates to `/api/extension/analyze-client` with a Bearer token instead. Generate one in the running app at Settings → Integrations → "Browser extension" → Generate token (shown once, copy it), then paste it into the extension popup's sign-in screen. Stored in `extension_tokens` (owner_id, token), same trust level as the GitHub OAuth token, generating a new one invalidates the old.
 
 **Extension's own app URL:** `extension/src/lib/api.ts` defaults to `http://localhost:3000`. No `.env` file in `extension/` (same permission wall as the main app's `.env.local`), override via `PLASMO_PUBLIC_APP_URL` in your shell if needed.
 

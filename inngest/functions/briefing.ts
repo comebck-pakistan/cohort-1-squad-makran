@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { sendEmail } from "@/lib/mail";
 import { formatDateTime } from "@/lib/format";
 import { parseNotificationPrefs } from "@/lib/notifications";
+import { createNotification } from "@/lib/db/notifications";
 
 /**
  * Fires 15 min before a known-client meeting. Reads cached client analysis, no new LLM call
@@ -50,6 +51,18 @@ export const preMeetingBriefing = inngest.createFunction(
       if (error) throw error;
       return { email: data.user.email!, prefs: parseNotificationPrefs(data.user.user_metadata) };
     });
+
+    if (owner.prefs.briefingInApp) {
+      await step.run("create-briefing-notification", () =>
+        createNotification(supabase, {
+          owner_id: meeting.owner_id,
+          type: "briefing",
+          title: `Briefing ready: ${meeting.title}`,
+          body: `${formatDateTime(meeting.starts_at)} · ${client.verdict ?? "New / Unverified"}`,
+          link: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/clients/${client.id}`,
+        })
+      );
+    }
 
     if (!owner.prefs.briefingEmail) {
       return { skipped: true, reason: "briefingEmail preference off" };

@@ -41,7 +41,7 @@ export function ConnectIntegrationsScreen() {
                 <div>
                   <div className={styles.title}>GitHub</div>
                   <div className={styles.desc}>
-                    The agent opens PRs under your account. Commits are attributed to Agentic OS Agent.
+                    The agent opens PRs under your account. Commits are attributed to Solvo Agent.
                   </div>
                   <div className={styles.subnote}>Uses OAuth, PRs appear under your GitHub account.</div>
                 </div>

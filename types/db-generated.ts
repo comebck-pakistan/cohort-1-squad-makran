@@ -1,7 +1,3 @@
-// Generated via `npx supabase gen types typescript --local`. Do not hand-edit;
-// re-run that command after changing anything in supabase/migrations and
-// paste the output back in here (skip its first `import` line, if any).
-
 export type Json =
   | string
   | number
@@ -113,6 +109,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          communication_notes: string | null
           confidence_tier: string
           created_at: string
           hires_count: number
@@ -133,6 +130,7 @@ export type Database = {
           verdict: string | null
         }
         Insert: {
+          communication_notes?: string | null
           confidence_tier?: string
           created_at?: string
           hires_count?: number
@@ -153,6 +151,7 @@ export type Database = {
           verdict?: string | null
         }
         Update: {
+          communication_notes?: string | null
           confidence_tier?: string
           created_at?: string
           hires_count?: number
@@ -194,6 +193,7 @@ export type Database = {
       }
       integrations: {
         Row: {
+          access_token: string | null
           account_label: string | null
           category: string
           connected_at: string | null
@@ -203,6 +203,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          access_token?: string | null
           account_label?: string | null
           category: string
           connected_at?: string | null
@@ -212,6 +213,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          access_token?: string | null
           account_label?: string | null
           category?: string
           connected_at?: string | null
@@ -230,7 +232,7 @@ export type Database = {
           id: string
           known_client: boolean
           owner_id: string
-          recall_bot_id: string | null
+          skribby_bot_id: string | null
           source: string
           starts_at: string
           status: string
@@ -245,7 +247,7 @@ export type Database = {
           id?: string
           known_client?: boolean
           owner_id: string
-          recall_bot_id?: string | null
+          skribby_bot_id?: string | null
           source: string
           starts_at: string
           status?: string
@@ -260,7 +262,7 @@ export type Database = {
           id?: string
           known_client?: boolean
           owner_id?: string
-          recall_bot_id?: string | null
+          skribby_bot_id?: string | null
           source?: string
           starts_at?: string
           status?: string
@@ -278,6 +280,39 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          link: string | null
+          owner_id: string
+          read_at: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          owner_id: string
+          read_at?: string | null
+          title: string
+          type: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          owner_id?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       proposals: {
         Row: {
           body: string
@@ -286,6 +321,7 @@ export type Database = {
           embedding: string | null
           id: string
           in_voice: boolean
+          outcome_notes: string | null
           outcome_reason: string | null
           owner_id: string
           resolved_at: string | null
@@ -300,6 +336,7 @@ export type Database = {
           embedding?: string | null
           id?: string
           in_voice?: boolean
+          outcome_notes?: string | null
           outcome_reason?: string | null
           owner_id: string
           resolved_at?: string | null
@@ -314,6 +351,7 @@ export type Database = {
           embedding?: string | null
           id?: string
           in_voice?: boolean
+          outcome_notes?: string | null
           outcome_reason?: string | null
           owner_id?: string
           resolved_at?: string | null

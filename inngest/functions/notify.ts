@@ -2,6 +2,7 @@ import { inngest, type TicketStateChanged } from "@/inngest/client";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendEmail } from "@/lib/mail";
 import { parseNotificationPrefs } from "@/lib/notifications";
+import { createNotification } from "@/lib/db/notifications";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -32,6 +33,17 @@ export const notify = inngest.createFunction(
     const ticketUrl = `${APP_URL}/tickets/${ticketId}`;
 
     if (state === "review") {
+      if (owner.prefs.prReadyInApp) {
+        await step.run("create-pr-ready-notification", () =>
+          createNotification(supabase, {
+            owner_id: ticket.owner_id,
+            type: "pr-ready",
+            title: `PR ready: ${ticket.title}`,
+            body: "The agent opened a PR and this ticket is ready for your review.",
+            link: ticketUrl,
+          })
+        );
+      }
       if (!owner.prefs.prReadyEmail) return { sent: false, reason: "prReadyEmail off" };
       await step.run("send-pr-ready-email", () =>
         sendEmail({
@@ -44,6 +56,17 @@ export const notify = inngest.createFunction(
     }
 
     if (state === "needs_human") {
+      if (owner.prefs.stuckInApp) {
+        await step.run("create-needs-human-notification", () =>
+          createNotification(supabase, {
+            owner_id: ticket.owner_id,
+            type: "needs-human",
+            title: `Needs your help: ${ticket.title}`,
+            body: "The agent hit its 3-attempt limit and needs your input to continue.",
+            link: ticketUrl,
+          })
+        );
+      }
       if (!owner.prefs.stuckEmail) return { sent: false, reason: "stuckEmail off" };
       await step.run("send-needs-human-email", () =>
         sendEmail({

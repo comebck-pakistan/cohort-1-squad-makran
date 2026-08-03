@@ -84,6 +84,7 @@ export async function upsertClientAnalysis(
     upwork_url: upworkUrl,
     jobs_won: 0,
     jobs_lost: 0,
+    communication_notes: null,
     ...patch,
   });
 }

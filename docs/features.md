@@ -1,4 +1,4 @@
-# Agentic OS for Freelancers — Finalized v1.0 Features
+# Solvo for Freelancers — Finalized v1.0 Features
 
 Status: Draft for approval. Nothing below is built yet — this is the source of truth Claude Code will build against once approved.
 
@@ -106,7 +106,7 @@ Tickets are never created directly from a transcript, regardless of which acquis
 
 **Auth method: OAuth (not a GitHub App) for v1.0.** Simpler and faster to implement — one redirect, one token exchange, no JWT/installation-token machinery. Tradeoff accepted knowingly: the OAuth `repo` scope is broad (covers everything the user's account can access) rather than a curated per-repo grant, and PRs will appear as opened by the user's own GitHub account rather than a distinct bot identity.
 
-**Mitigation (cheap, do it regardless of provider):** the *token/PR* is the user's identity, but the **git commit author/committer** on every commit the agent makes is still set to a distinct identity (e.g. `Agentic OS Agent <agent@yourdomain>`) via a `git config` step before committing. So the commit history inside the PR is honestly attributed to the agent even though the PR wrapper is under the user's account.
+**Mitigation (cheap, do it regardless of provider):** the *token/PR* is the user's identity, but the **git commit author/committer** on every commit the agent makes is still set to a distinct identity (e.g. `Solvo Agent <agent@yourdomain>`) via a `git config` step before committing. So the commit history inside the PR is honestly attributed to the agent even though the PR wrapper is under the user's account.
 
 **Schema — deliberately provider-agnostic, GitHub is just the first row:**
 

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { connectRepo, removeRepo, setDefaultRepo, disconnectGithub } from "@/lib/actions/repos";
 import { generateExtensionToken } from "@/lib/actions/extension-tokens";
 import type { RepoRow, IntegrationRow } from "@/types/db";
@@ -28,17 +29,25 @@ interface IntegrationsScreenProps {
   initialIntegrations: IntegrationRow[];
   initialRepos: RepoRow[];
   initialExtensionConnected: boolean;
+  initialRepoOptions: string[];
 }
 
-export function IntegrationsScreen({ initialIntegrations, initialRepos, initialExtensionConnected }: IntegrationsScreenProps) {
+export function IntegrationsScreen({
+  initialIntegrations,
+  initialRepos,
+  initialExtensionConnected,
+  initialRepoOptions,
+}: IntegrationsScreenProps) {
   const router = useRouter();
   const [repos, setRepos] = useState<RepoRow[]>(initialRepos);
+  const [repoOptions] = useState<string[]>(initialRepoOptions);
   const [policy, setPolicy] = useState<"smart" | "always">("smart");
   const githubIntegration = initialIntegrations.find((i) => i.category === "repo" && i.provider === "github");
   const [githubConnected, setGithubConnected] = useState(githubIntegration?.status === "connected");
   const [calendarConnected, setCalendarConnected] = useState(true);
   const [newRepo, setNewRepo] = useState("");
   const [connecting, setConnecting] = useState(false);
+  const availableRepoOptions = repoOptions.filter((name) => !repos.some((r) => r.full_name === name));
   const [toast, setToast] = useState<string | null>(null);
   const [extensionConnected, setExtensionConnected] = useState(initialExtensionConnected);
   const [generatingToken, setGeneratingToken] = useState(false);
@@ -61,6 +70,15 @@ export function IntegrationsScreen({ initialIntegrations, initialRepos, initialE
     setToast(msg);
     setTimeout(() => setToast(null), 2400);
   }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get("connected");
+    const error = params.get("error");
+    if (connected === "github") showToast("GitHub connected.");
+    if (error) showToast(`GitHub connect failed: ${error.replace(/_/g, " ")}`);
+    if (connected || error) window.history.replaceState({}, "", window.location.pathname);
+  }, []);
 
   async function handleConnectRepo() {
     const fullName = newRepo.trim();
@@ -122,37 +140,47 @@ export function IntegrationsScreen({ initialIntegrations, initialRepos, initialE
               </button>
             </>
           ) : (
-            <span className={styles.accountLabel}>Not connected yet, connect a repo below.</span>
+            <a href="/api/github/oauth/start">
+              <Button variant="primary" style={{ height: 32, padding: "0 14px", fontSize: 13 }}>
+                Connect with GitHub
+              </Button>
+            </a>
           )}
         </div>
         <div className={styles.subNote}>
-          Personal access token (GITHUB_TOKEN) · PRs opened under the token&rsquo;s account · commits
-          attributed to Agentic OS Agent &lt;agent@agentcos.dev&gt;
+          OAuth (scopes: repo, workflow) · PRs opened under your GitHub account · commits
+          attributed to Solvo Agent &lt;agent@solvo.dev&gt;
         </div>
 
         <div className={styles.divider} />
 
         <div className={styles.subSectionHead}>
           <div className={styles.subSectionTitle}>Connected repositories</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <Input
-              placeholder="owner/repo"
-              value={newRepo}
-              onChange={(e) => setNewRepo(e.target.value)}
-              style={{ height: 36, width: 220, fontSize: 13 }}
-            />
-            <Button
-              variant="primary"
-              style={{ height: 36, padding: "0 14px", fontSize: 13 }}
-              onClick={handleConnectRepo}
-              disabled={connecting || !newRepo.trim()}
-            >
-              {connecting ? "Connecting…" : "Connect repo"}
-            </Button>
-          </div>
+          {githubConnected && (
+            <div style={{ display: "flex", gap: 8 }}>
+              <Select
+                placeholder={availableRepoOptions.length === 0 ? "No repos found" : "Select a repo"}
+                value={newRepo}
+                onChange={(e) => setNewRepo(e.target.value)}
+                options={availableRepoOptions.map((name) => ({ value: name, label: name }))}
+                disabled={availableRepoOptions.length === 0}
+                style={{ height: 36, width: 240, fontSize: 13 }}
+              />
+              <Button
+                variant="primary"
+                style={{ height: 36, padding: "0 14px", fontSize: 13 }}
+                onClick={handleConnectRepo}
+                disabled={connecting || !newRepo}
+              >
+                {connecting ? "Connecting…" : "Connect repo"}
+              </Button>
+            </div>
+          )}
         </div>
 
-        {repos.length === 0 ? (
+        {!githubConnected ? (
+          <div className={styles.repoFootNote}>Connect GitHub above before adding a repo.</div>
+        ) : repos.length === 0 ? (
           <div className={styles.repoFootNote}>No repos connected yet. Connect one to let the agent open PRs.</div>
         ) : (
           <div className={styles.repoTable}>
@@ -216,7 +244,7 @@ export function IntegrationsScreen({ initialIntegrations, initialRepos, initialE
           )}
         </div>
         <div className={styles.subNote}>
-          Recall.ai Calendar Integration · reads upcoming events with video links · no per-event
+          Skribby Calendar Integration · reads upcoming events with video links · no per-event
           cost beyond bot usage
         </div>
 

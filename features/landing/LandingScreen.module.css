@@ -432,7 +432,6 @@
   height: 56px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 0 40px;
 }
 
@@ -441,16 +440,6 @@
   font-weight: 500;
   font-size: 15px;
   color: #fff;
-}
-
-.footerLinks {
-  display: flex;
-  gap: 20px;
-}
-
-.footerLink {
-  font-size: 12px;
-  color: var(--ink-3);
 }
 
 .toast {

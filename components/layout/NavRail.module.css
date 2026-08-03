@@ -9,12 +9,18 @@
   padding: 20px 12px;
 }
 
+.brandRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 20px;
+}
+
 .brand {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 18px;
   color: var(--ink);
-  padding: 0 12px 20px;
 }
 
 .item {

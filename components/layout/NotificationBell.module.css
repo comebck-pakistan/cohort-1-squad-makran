@@ -1,0 +1,110 @@
+.wrap {
+  position: relative;
+}
+
+.bellButton {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-pill);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.bellButton:hover {
+  background: var(--panel-2);
+}
+
+.badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: var(--r-pill);
+  background: var(--risk);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}
+
+.panel {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  width: 320px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-pop);
+  z-index: 31;
+  padding: 12px;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 0 4px;
+}
+
+.panelTitle {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.markAllButton {
+  font-size: 12px;
+  color: var(--signal);
+  font-weight: 500;
+}
+
+.panelList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+
+.itemUnread {
+  opacity: 1;
+}
+
+.itemRead {
+  opacity: 0.55;
+}
+
+.itemTime {
+  font-size: 11px;
+  color: var(--ink-4);
+  margin-top: 6px;
+}
+
+.empty {
+  padding: 24px 8px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-3);
+}
