@@ -30,6 +30,7 @@ const EXAMPLE_PROPOSALS: ProposalRow[] = [
     body: "Hi Priya, I've rebuilt checkout flows for three Shopify Plus stores in the last year...",
     sent_at: "2026-06-10T10:00:00Z",
     outcome_reason: "Selected on merit",
+    outcome_notes: null,
     resolved_at: "2026-06-13T10:00:00Z",
     embedding: null,
     created_at: "2026-06-09T09:30:00Z",
@@ -44,6 +45,7 @@ const EXAMPLE_PROPOSALS: ProposalRow[] = [
     body: "Survey-fallback draft: not enough past-proposal history to draft in your voice yet.",
     sent_at: null,
     outcome_reason: null,
+    outcome_notes: null,
     resolved_at: null,
     embedding: null,
     created_at: "2026-06-12T12:00:00Z",
@@ -107,11 +109,17 @@ export function ProposalsListScreen({ initialProposals }: ProposalsListScreenPro
     }
   }
 
-  async function confirmOutcome(reason: string) {
+  async function confirmOutcome(reason: string, notes: string, date: string) {
     if (!outcomeTarget) return;
     const { proposal, outcome } = outcomeTarget;
     try {
-      const updated = await markProposalOutcome(proposal.id, outcome, reason as ProposalRow["outcome_reason"]);
+      const updated = await markProposalOutcome(
+        proposal.id,
+        outcome,
+        reason as ProposalRow["outcome_reason"],
+        notes,
+        date
+      );
       setProposals((ps) => ps.map((x) => (x.id === proposal.id ? updated : x)));
       showToast(`Proposal marked ${outcome}: "${reason}".`);
     } catch {
@@ -288,7 +296,7 @@ export function ProposalsListScreen({ initialProposals }: ProposalsListScreenPro
           proposalTitle={outcomeTarget.proposal.title}
           clientName={outcomeTarget.proposal.client_id ? getClientById(outcomeTarget.proposal.client_id)?.name ?? "–" : "–"}
           onClose={() => setOutcomeTarget(null)}
-          onConfirm={(reason) => confirmOutcome(reason)}
+          onConfirm={(reason, notes, date) => confirmOutcome(reason, notes, date)}
         />
       )}
 

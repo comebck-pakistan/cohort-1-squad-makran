@@ -318,6 +318,7 @@ export type Database = {
           embedding: string | null
           id: string
           in_voice: boolean
+          outcome_notes: string | null
           outcome_reason: string | null
           owner_id: string
           resolved_at: string | null
@@ -332,6 +333,7 @@ export type Database = {
           embedding?: string | null
           id?: string
           in_voice?: boolean
+          outcome_notes?: string | null
           outcome_reason?: string | null
           owner_id: string
           resolved_at?: string | null
@@ -346,6 +348,7 @@ export type Database = {
           embedding?: string | null
           id?: string
           in_voice?: boolean
+          outcome_notes?: string | null
           outcome_reason?: string | null
           owner_id?: string
           resolved_at?: string | null
