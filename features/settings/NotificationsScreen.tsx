@@ -35,7 +35,7 @@ export function NotificationsScreen({ initialPrefs, email }: NotificationsScreen
   return (
     <div className={styles.body}>
       <div className={styles.sectionTitle}>Notifications</div>
-      <div className={styles.lede}>Delivered via email. In-app delivery is not built yet, this toggle is saved but has no effect.</div>
+      <div className={styles.lede}>Choose email, in-app (bell icon, top left), or both per trigger.</div>
 
       <div className={styles.triggerList}>
         <Card>

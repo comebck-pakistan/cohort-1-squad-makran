@@ -23,6 +23,12 @@ export type ClientContactRow = Tables["client_contacts"]["Row"];
 
 export type ExtensionTokenRow = Tables["extension_tokens"]["Row"];
 
+export type NotificationType = "pr-ready" | "needs-human" | "briefing";
+
+export type NotificationRow = Omit<Tables["notifications"]["Row"], "type"> & {
+  type: NotificationType;
+};
+
 export type IntegrationCategory = "repo" | "calendar";
 export type IntegrationProvider = "github" | "gitlab" | "google_calendar";
 export type IntegrationStatus = "connected" | "error" | "disconnected";

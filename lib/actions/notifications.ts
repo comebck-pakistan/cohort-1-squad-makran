@@ -2,6 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { parseNotificationPrefs, type NotificationPrefs } from "@/lib/notifications";
+import {
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "@/lib/db/notifications";
+import type { NotificationRow } from "@/types/db";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -10,6 +16,21 @@ async function requireUser() {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in.");
   return { supabase, user };
+}
+
+export async function getMyNotifications(): Promise<NotificationRow[]> {
+  const { supabase } = await requireUser();
+  return listNotifications(supabase);
+}
+
+export async function markNotificationAsRead(id: string): Promise<void> {
+  const { supabase } = await requireUser();
+  await markNotificationRead(supabase, id);
+}
+
+export async function markAllNotificationsAsRead(): Promise<void> {
+  const { supabase, user } = await requireUser();
+  await markAllNotificationsRead(supabase, user.id);
 }
 
 export async function getNotificationPrefs(): Promise<{ prefs: NotificationPrefs; email: string }> {

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NotificationBell } from "./NotificationBell";
+import type { NotificationRow } from "@/types/db";
 import styles from "./NavRail.module.css";
 
 const NAV = [
@@ -14,12 +16,19 @@ const NAV = [
   { href: "/settings", label: "Settings" },
 ] as const;
 
+interface NavRailProps {
+  notifications: NotificationRow[];
+}
+
 /** Fixed 240px left nav rail (design-system.md §7, web command center). */
-export function NavRail() {
+export function NavRail({ notifications }: NavRailProps) {
   const pathname = usePathname();
   return (
     <nav className={styles.rail}>
-      <div className={styles.brand}>Agentic OS</div>
+      <div className={styles.brandRow}>
+        <div className={styles.brand}>Agentic OS</div>
+        <NotificationBell initialNotifications={notifications} />
+      </div>
       {NAV.map((n) => {
         const active = pathname?.startsWith(n.href);
         return (
