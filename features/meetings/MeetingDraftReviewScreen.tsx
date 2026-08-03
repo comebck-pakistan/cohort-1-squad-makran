@@ -155,7 +155,7 @@ export function MeetingDraftReviewScreen({ meeting, repos }: MeetingDraftReviewS
           <div>
             <div className={styles.colTitle}>Transcript</div>
             <div className={styles.transcriptMeta}>
-              {meeting.title} · {meeting.source === "bot_recall" ? "Recall bot" : "Manual paste"} · {meeting.transcript_source ?? "manual"} transcript
+              {meeting.title} · {meeting.source === "bot_skribby" ? "Skribby bot" : "Manual paste"} · {meeting.transcript_source ?? "manual"} transcript
             </div>
             <div className={styles.transcriptBox}>
               {meeting.transcript_text ? (

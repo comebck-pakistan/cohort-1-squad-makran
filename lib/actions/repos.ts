@@ -1,9 +1,9 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { listIntegrations, createIntegration, updateIntegration } from "@/lib/db/integrations";
+import { listIntegrations, updateIntegration, getGithubAccessToken } from "@/lib/db/integrations";
 import { listRepos, createRepo, setDefaultRepo as setDefaultRepoRow, deleteRepo } from "@/lib/db/repos";
-import { verifyRepoAccess, getAuthenticatedLogin } from "@/lib/github";
+import { verifyRepoAccess, listUserRepos } from "@/lib/github";
 import type { IntegrationRow, RepoRow } from "@/types/db";
 
 async function requireOwnerId() {
@@ -25,38 +25,28 @@ export async function fetchRepos(): Promise<RepoRow[]> {
   return listRepos(supabase);
 }
 
-async function getOrCreateGithubIntegration(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  ownerId: string
-): Promise<IntegrationRow> {
-  const existing = (await listIntegrations(supabase)).find((i) => i.category === "repo" && i.provider === "github");
-  const login = await getAuthenticatedLogin();
-  if (existing) {
-    if (existing.status !== "connected" || existing.account_label !== login) {
-      return updateIntegration(supabase, existing.id, {
-        status: "connected",
-        connected_at: new Date().toISOString(),
-        account_label: login,
-      });
-    }
-    return existing;
-  }
-  return createIntegration(supabase, {
-    owner_id: ownerId,
-    category: "repo",
-    provider: "github",
-    status: "connected",
-    connected_at: new Date().toISOString(),
-    account_label: login,
-  });
+/** Repo full names the connected GitHub account can see, for the "Connect repository" picker. Empty if not connected. */
+export async function fetchGithubRepoOptions(): Promise<string[]> {
+  const { supabase, ownerId } = await requireOwnerId();
+  const token = await getGithubAccessToken(supabase, ownerId);
+  if (!token) return [];
+  const repos = await listUserRepos(token);
+  return repos.map((r) => r.fullName);
 }
 
-/** Verifies the repo is reachable with GITHUB_TOKEN before saving it, then connects it as the default if it's the first. */
+/** Verifies the repo is reachable with the user's connected GitHub OAuth token, then saves it, default if it's the first. */
 export async function connectRepo(fullName: string): Promise<RepoRow> {
   const { supabase, ownerId } = await requireOwnerId();
-  await verifyRepoAccess(fullName);
 
-  const integration = await getOrCreateGithubIntegration(supabase, ownerId);
+  const token = await getGithubAccessToken(supabase, ownerId);
+  if (!token) throw new Error("Connect GitHub first.");
+  await verifyRepoAccess(token, fullName);
+
+  const integration = (await listIntegrations(supabase)).find(
+    (i) => i.category === "repo" && i.provider === "github"
+  );
+  if (!integration) throw new Error("Connect GitHub first.");
+
   const existingRepos = await listRepos(supabase);
 
   return createRepo(supabase, {
@@ -87,5 +77,5 @@ export async function disconnectGithub(): Promise<void> {
   for (const repo of repos) {
     await deleteRepo(supabase, repo.id);
   }
-  await updateIntegration(supabase, github.id, { status: "disconnected", connected_at: null });
+  await updateIntegration(supabase, github.id, { status: "disconnected", connected_at: null, access_token: null });
 }

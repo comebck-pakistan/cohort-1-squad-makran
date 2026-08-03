@@ -19,7 +19,7 @@ export async function getExtensionTokenStatus(): Promise<{ connected: boolean; c
   return { connected: !!row, createdAt: row?.created_at ?? null };
 }
 
-/** Returns the raw token once. It's stored plaintext (same trust level as GITHUB_TOKEN), never returned again after this. */
+/** Returns the raw token once. It's stored plaintext (same trust level as the GitHub OAuth token), never returned again after this. */
 export async function generateExtensionToken(): Promise<string> {
   const { supabase, user } = await requireUser();
   const token = `aos_${randomBytes(24).toString("hex")}`;

@@ -37,7 +37,7 @@ export type RepoRow = Omit<Tables["repos"]["Row"], "provider"> & {
   provider: IntegrationProvider;
 };
 
-export type MeetingSource = "bot_recall" | "manual_paste" | "manual_upload";
+export type MeetingSource = "bot_skribby" | "manual_paste" | "manual_upload";
 export type TranscriptSource = "caption" | "whisper_fallback" | "manual";
 export type MeetingStatus = "scheduled" | "in_progress" | "processing" | "ready" | "failed";
 

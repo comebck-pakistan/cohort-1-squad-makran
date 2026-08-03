@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createMeeting, updateMeeting, listMeetings } from "@/lib/db/meetings";
 import { findClientContactByEmail } from "@/lib/db/client-contacts";
 import { createTicket } from "@/lib/db/tickets";
-import { createRecallBot } from "@/lib/recall";
+import { createSkribbyBot } from "@/lib/skribby";
 import { inngest } from "@/inngest/client";
 import type { MeetingRow } from "@/types/db";
 
@@ -32,21 +32,21 @@ export interface ScheduleBotMeetingInput {
   startsAt: string;
 }
 
-/** Recall.ai bot-join path. Requires RECALL_API_KEY, real Recall.ai account. */
+/** Skribby bot-join path. Requires SKRIBBY_API_KEY, real Skribby account. */
 export async function scheduleBotMeeting(input: ScheduleBotMeetingInput): Promise<MeetingRow> {
   const { supabase, ownerId } = await requireOwnerId();
   const { knownClient, clientId } = await resolveKnownClient(supabase, input.guestEmail);
 
-  const bot = await createRecallBot({ meetingUrl: input.meetingUrl });
+  const bot = await createSkribbyBot({ meetingUrl: input.meetingUrl });
 
   const meeting = await createMeeting(supabase, {
     owner_id: ownerId,
     client_id: input.clientId ?? clientId,
     title: input.title,
-    source: "bot_recall",
+    source: "bot_skribby",
     transcript_source: null,
     status: "scheduled",
-    recall_bot_id: bot.id,
+    skribby_bot_id: bot.id,
     draft_tickets: [],
     starts_at: input.startsAt,
     known_client: knownClient,
@@ -79,7 +79,7 @@ export async function createManualMeeting(input: CreateManualMeetingInput): Prom
     source: "manual_paste",
     transcript_source: "manual",
     status: "processing",
-    recall_bot_id: null,
+    skribby_bot_id: null,
     draft_tickets: [],
     starts_at: input.startsAt,
     known_client: Boolean(input.clientId),

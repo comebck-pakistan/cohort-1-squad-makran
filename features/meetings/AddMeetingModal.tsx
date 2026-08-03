@@ -64,7 +64,7 @@ export function AddMeetingModal({ onClose, onCreated }: AddMeetingModalProps) {
         onCreated(meeting, "Transcript received, drafting tickets.");
       }
     } catch {
-      setError(mode === "bot" ? "Could not schedule the bot. Check Recall.ai is configured." : "Could not process the transcript.");
+      setError(mode === "bot" ? "Could not schedule the bot. Check Skribby is configured." : "Could not process the transcript.");
       setSubmitting(false);
     }
   }

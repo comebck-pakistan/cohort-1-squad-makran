@@ -1,7 +1,3 @@
-// Generated via `npx supabase gen types typescript --local`. Do not hand-edit;
-// re-run that command after changing anything in supabase/migrations and
-// paste the output back in here (skip its first `import` line, if any).
-
 export type Json =
   | string
   | number
@@ -194,6 +190,7 @@ export type Database = {
       }
       integrations: {
         Row: {
+          access_token: string | null
           account_label: string | null
           category: string
           connected_at: string | null
@@ -203,6 +200,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          access_token?: string | null
           account_label?: string | null
           category: string
           connected_at?: string | null
@@ -212,6 +210,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          access_token?: string | null
           account_label?: string | null
           category?: string
           connected_at?: string | null
@@ -230,7 +229,7 @@ export type Database = {
           id: string
           known_client: boolean
           owner_id: string
-          recall_bot_id: string | null
+          skribby_bot_id: string | null
           source: string
           starts_at: string
           status: string
@@ -245,7 +244,7 @@ export type Database = {
           id?: string
           known_client?: boolean
           owner_id: string
-          recall_bot_id?: string | null
+          skribby_bot_id?: string | null
           source: string
           starts_at: string
           status?: string
@@ -260,7 +259,7 @@ export type Database = {
           id?: string
           known_client?: boolean
           owner_id?: string
-          recall_bot_id?: string | null
+          skribby_bot_id?: string | null
           source?: string
           starts_at?: string
           status?: string
