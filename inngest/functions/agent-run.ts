@@ -8,7 +8,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { generatePlan, generateFileChanges, formatPlanSummary } from "@/lib/llm/agent";
 import { ensureBranch, commitFiles, openPullRequest, mergePullRequest, getCheckStatus, verifyRepoAccess } from "@/lib/github";
 import { updateTicket } from "@/lib/db/tickets";
-import { getGithubAccessToken } from "@/lib/db/integrations";
+import { getGithubAccessToken, updateIntegration } from "@/lib/db/integrations";
 import type { TicketRow } from "@/types/db";
 
 const MAX_ATTEMPTS = 3;
@@ -48,7 +48,38 @@ async function setTicketState(
  * iteration is one attempt, whether it ends in a CI failure or a human "request changes."
  */
 export const agentRun = inngest.createFunction(
-  { id: "agent-run", triggers: [{ event: "ticket/agent-assigned" }] },
+  {
+    id: "agent-run",
+    triggers: [{ event: "ticket/agent-assigned" }],
+    // Safety net for crashes that exhaust Inngest's own retries (revoked GitHub token,
+    // persistent OpenAI/GitHub 5xx, etc): without this the ticket is left stuck in whatever
+    // state the loop was in, invisible to the user forever.
+    onFailure: async ({ event, error, step }) => {
+      const original = event.data.event.data as TicketAgentAssigned;
+      const supabase = createServiceClient();
+      await step.run("mark-needs-human-on-crash", () =>
+        setTicketState(supabase, original.ticketId, { state: "needs_human" })
+      );
+      if (error.message?.startsWith("github_auth_failed")) {
+        await step.run("mark-github-integration-error", async () => {
+          const { data: ticket } = await supabase
+            .from("tickets")
+            .select("owner_id")
+            .eq("id", original.ticketId)
+            .single();
+          if (!ticket) return;
+          const { data: integration } = await supabase
+            .from("integrations")
+            .select("id")
+            .eq("owner_id", ticket.owner_id)
+            .eq("category", "repo")
+            .eq("provider", "github")
+            .maybeSingle();
+          if (integration) await updateIntegration(supabase, integration.id, { status: "error" });
+        });
+      }
+    },
+  },
   async ({ event, step }) => {
     const { ticketId } = event.data as TicketAgentAssigned;
     const supabase = createServiceClient();

@@ -56,6 +56,7 @@ export async function draftProposal(input: DraftProposalInput): Promise<DraftPro
     prompt:
       `Here are the freelancer's past winning proposals, for style and content grounding:\n\n${groundingBlock}\n\n` +
       `Now draft a new proposal for this job post:\n\n${jobPostText}`,
+    maxRetries: 1,
   });
 
   return { body: text, inVoice: true, retrievedProposalIds: similar.map((p) => p.id) };
@@ -78,6 +79,7 @@ async function draftSurveyFallback(
     prompt:
       `Style preferences: tone "${tone}", length "${length}", opening style "${opener}".\n\n` +
       `Draft a proposal for this job post:\n\n${jobPostText}`,
+    maxRetries: 1,
   });
 
   return { body: text, inVoice: false, retrievedProposalIds: [] };

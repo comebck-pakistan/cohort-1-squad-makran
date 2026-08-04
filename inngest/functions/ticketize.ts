@@ -1,3 +1,4 @@
+import { NonRetriableError } from "inngest";
 import { inngest, type MeetingReadyForProcessing } from "@/inngest/client";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ticketizeTranscript } from "@/lib/llm/ticketize";
@@ -5,7 +6,20 @@ import { transcribeAudio } from "@/lib/llm/whisper";
 import { getSkribbyTranscript, getSkribbyRecordingUrl } from "@/lib/skribby";
 
 export const ticketizeMeeting = inngest.createFunction(
-  { id: "ticketize-meeting", triggers: [{ event: "meeting/ready-for-processing" }] },
+  {
+    id: "ticketize-meeting",
+    triggers: [{ event: "meeting/ready-for-processing" }],
+    // Any unhandled crash here (Whisper failure, ticketization LLM failure, a DB write throwing)
+    // otherwise leaves the meeting stuck at "processing" forever with no visibility.
+    onFailure: async ({ event, step }) => {
+      const original = event.data.event.data as MeetingReadyForProcessing;
+      const supabase = createServiceClient();
+      await step.run("mark-meeting-failed-on-crash", async () => {
+        const { error } = await supabase.from("meetings").update({ status: "failed" }).eq("id", original.meetingId);
+        if (error) throw error;
+      });
+    },
+  },
   async ({ event, step }) => {
     const { meetingId, transcript: providedTranscript } = event.data as MeetingReadyForProcessing;
     const supabase = createServiceClient();
@@ -34,7 +48,7 @@ export const ticketizeMeeting = inngest.createFunction(
       const botId = meeting.skribby_bot_id;
       transcript = await step.run("transcribe-fallback", async () => {
         const recordingUrl = await getSkribbyRecordingUrl(botId);
-        if (!recordingUrl) throw new Error("No recording available for Whisper fallback.");
+        if (!recordingUrl) throw new NonRetriableError("No recording available for Whisper fallback.");
         return transcribeAudio(new URL(recordingUrl));
       });
       transcriptSource = "whisper_fallback";

@@ -71,6 +71,7 @@ export async function analyzeClient(input: {
       `Client confidence tier: ${input.tier} (${input.signalsVerified}/3 signals verified)`,
       `Freelancer's own rate history:\n${rateLines}`,
     ].join("\n\n"),
+    maxRetries: 1,
   });
 
   const priceBand: PriceBand | null =
