@@ -4,9 +4,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { VerdictBadge } from "@/components/state/VerdictBadge";
-import { mockClients } from "@/mock/clients";
-import { mockProposals } from "@/mock/proposals";
 import { formatRelative } from "@/lib/format";
+import type { ClientRow, ProposalRow } from "@/types/db";
 import styles from "./ClientsListScreen.module.css";
 
 const NOW = new Date("2026-08-02T14:10:00Z");
@@ -17,14 +16,19 @@ const TIER_LABEL: Record<string, string> = {
   insufficient: "Insufficient data",
 };
 
-export function ClientsListScreen() {
+interface ClientsListScreenProps {
+  initialClients: ClientRow[];
+  proposals: ProposalRow[];
+}
+
+export function ClientsListScreen({ initialClients, proposals }: ClientsListScreenProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return mockClients.filter((c) => !q || c.name.toLowerCase().includes(q));
-  }, [search]);
+    return initialClients.filter((c) => !q || c.name.toLowerCase().includes(q));
+  }, [search, initialClients]);
 
   return (
     <div>
@@ -53,8 +57,8 @@ export function ClientsListScreen() {
             <div className={styles.empty}>No clients yet. They&rsquo;re created automatically the first time you analyze a job or log a meeting.</div>
           ) : (
             visible.map((c) => {
-              const won = mockProposals.filter((p) => p.client_id === c.id && p.state === "won").length;
-              const lost = mockProposals.filter((p) => p.client_id === c.id && p.state === "lost").length;
+              const won = proposals.filter((p) => p.client_id === c.id && p.state === "won").length;
+              const lost = proposals.filter((p) => p.client_id === c.id && p.state === "lost").length;
               return (
                 <div key={c.id} className={styles.row} onClick={() => router.push(`/clients/${c.id}`)}>
                   <span className={styles.name}>{c.name}</span>

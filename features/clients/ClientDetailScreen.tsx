@@ -7,22 +7,23 @@ import { VerdictBadge } from "@/components/state/VerdictBadge";
 import { ConfidenceTag } from "@/components/epistemic/ConfidenceTag";
 import { PriceBand } from "@/components/epistemic/PriceBand";
 import { StateChip } from "@/components/state/StateChip";
-import { getClientById, mockClientContacts } from "@/mock/clients";
-import { mockProposals } from "@/mock/proposals";
-import { mockMeetings } from "@/mock/meetings";
-import { mockTickets } from "@/mock/tickets";
+import { User } from "lucide-react";
 import { formatRelative } from "@/lib/format";
+import type { ClientRow, ClientContactRow, ProposalRow, MeetingRow, TicketRow } from "@/types/db";
 import styles from "./ClientDetailScreen.module.css";
 
 const NOW = new Date("2026-08-02T14:10:00Z");
 
 interface ClientDetailScreenProps {
-  clientId: string;
+  client: ClientRow | null;
+  initialContacts: ClientContactRow[];
+  proposals: ProposalRow[];
+  meetings: MeetingRow[];
+  tickets: TicketRow[];
 }
 
-export function ClientDetailScreen({ clientId }: ClientDetailScreenProps) {
-  const client = getClientById(clientId);
-  const [contacts, setContacts] = useState(mockClientContacts.filter((c) => c.client_id === clientId));
+export function ClientDetailScreen({ client, initialContacts, proposals, meetings, tickets }: ClientDetailScreenProps) {
+  const [contacts, setContacts] = useState(initialContacts);
   const [toast, setToast] = useState<string | null>(null);
 
   function showToast(msg: string) {
@@ -38,9 +39,8 @@ export function ClientDetailScreen({ clientId }: ClientDetailScreenProps) {
     );
   }
 
-  const proposals = mockProposals.filter((p) => p.client_id === clientId);
-  const meetings = mockMeetings.filter((m) => m.client_id === clientId && m.status === "ready");
-  const tickets = mockTickets.filter((t) => t.client_id === clientId && t.state !== "done" && t.state !== "backlog");
+  const readyMeetings = meetings.filter((m) => m.status === "ready");
+  const activeTickets = tickets.filter((t) => t.state !== "done" && t.state !== "backlog");
 
   const wonCount = proposals.filter((p) => p.state === "won").length;
   const resolvedCount = proposals.filter((p) => p.state === "won" || p.state === "lost").length;
@@ -157,7 +157,7 @@ export function ClientDetailScreen({ clientId }: ClientDetailScreenProps) {
               </Link>
             </div>
             <Card className={styles.tableCard}>
-              {meetings.length === 0 ? (
+              {readyMeetings.length === 0 ? (
                 <div style={{ color: "var(--ink-3)", fontSize: 13, padding: "8px 0" }}>No processed meetings yet.</div>
               ) : (
                 <>
@@ -167,7 +167,7 @@ export function ClientDetailScreen({ clientId }: ClientDetailScreenProps) {
                     <span>Transcript</span>
                     <span>Tickets</span>
                   </div>
-                  {meetings.map((m) => (
+                  {readyMeetings.map((m) => (
                     <div key={m.id} className={styles.tableRow} style={{ gridTemplateColumns: "1.6fr 120px 100px 1fr" }}>
                       <span style={{ color: "var(--ink)" }}>{m.title}</span>
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-3)" }}>
@@ -199,7 +199,7 @@ export function ClientDetailScreen({ clientId }: ClientDetailScreenProps) {
               Active tickets
             </div>
             <Card className={styles.tableCard}>
-              {tickets.length === 0 ? (
+              {activeTickets.length === 0 ? (
                 <div style={{ color: "var(--ink-3)", fontSize: 13, padding: "8px 0" }}>No active tickets for this client.</div>
               ) : (
                 <>
@@ -208,7 +208,7 @@ export function ClientDetailScreen({ clientId }: ClientDetailScreenProps) {
                     <span>State</span>
                     <span>Updated</span>
                   </div>
-                  {tickets.map((t) => (
+                  {activeTickets.map((t) => (
                     <div key={t.id} className={styles.tableRow} style={{ gridTemplateColumns: "1.6fr 200px 1fr" }}>
                       <Link href={`/tickets/${t.id}`} style={{ color: "var(--ink)" }}>
                         {t.title}
@@ -238,10 +238,7 @@ export function ClientDetailScreen({ clientId }: ClientDetailScreenProps) {
               ) : (
                 contacts.map((c) => (
                   <div key={c.id} className={styles.contactRow}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="1.6" style={{ flexShrink: 0 }}>
-                      <circle cx="12" cy="8" r="4" />
-                      <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" strokeLinecap="round" />
-                    </svg>
+                    <User width={16} height={16} color="var(--ink-3)" strokeWidth={1.6} style={{ flexShrink: 0 }} />
                     <div className={styles.contactInfo}>
                       <div className={styles.contactName}>{c.name}</div>
                       <div className={styles.contactEmail}>{c.email}</div>
@@ -280,7 +277,7 @@ export function ClientDetailScreen({ clientId }: ClientDetailScreenProps) {
                 </div>
                 <div className={styles.statRow}>
                   <span className={styles.statLabel}>Active tickets</span>
-                  <span className={styles.statValue}>{tickets.length}</span>
+                  <span className={styles.statValue}>{activeTickets.length}</span>
                 </div>
               </div>
             </Card>

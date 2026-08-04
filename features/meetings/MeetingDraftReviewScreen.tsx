@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { getClientById } from "@/mock/clients";
+import { Trash2 } from "lucide-react";
 import { promoteDraftTickets, discardDraftTickets } from "@/lib/actions/meetings";
-import type { MeetingRow, RepoRow } from "@/types/db";
+import type { MeetingRow, RepoRow, ClientRow } from "@/types/db";
 import styles from "./MeetingDraftReviewScreen.module.css";
 
 interface DraftTicketDraft {
@@ -19,11 +19,12 @@ interface DraftTicketDraft {
 interface MeetingDraftReviewScreenProps {
   meeting: MeetingRow | null;
   repos: RepoRow[];
+  clients: ClientRow[];
 }
 
-export function MeetingDraftReviewScreen({ meeting, repos }: MeetingDraftReviewScreenProps) {
+export function MeetingDraftReviewScreen({ meeting, repos, clients }: MeetingDraftReviewScreenProps) {
   const router = useRouter();
-  const client = meeting?.client_id ? getClientById(meeting.client_id) : undefined;
+  const client = meeting?.client_id ? clients.find((c) => c.id === meeting.client_id) : undefined;
   const defaultRepo = repos.find((r) => r.is_default);
 
   const [tickets, setTickets] = useState<DraftTicketDraft[]>(
@@ -124,9 +125,7 @@ export function MeetingDraftReviewScreen({ meeting, repos }: MeetingDraftReviewS
                             <span className={styles.repoValue}>{repoLabel}</span>
                             <div style={{ flex: 1 }} />
                             <button className={styles.iconBtn} onClick={() => deleteTicket(t.id)}>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                                <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V7h10z" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
+                              <Trash2 width={16} height={16} strokeWidth={1.6} />
                             </button>
                           </div>
                         </>
@@ -138,9 +137,7 @@ export function MeetingDraftReviewScreen({ meeting, repos }: MeetingDraftReviewS
                               Edit
                             </button>
                             <button className={styles.iconBtn} onClick={() => deleteTicket(t.id)}>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                                <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V7h10z" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
+                              <Trash2 width={16} height={16} strokeWidth={1.6} />
                             </button>
                           </div>
                         </div>

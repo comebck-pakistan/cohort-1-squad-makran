@@ -7,18 +7,10 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { StateChip } from "@/components/state/StateChip";
-import { mockTickets } from "@/mock/tickets";
-import { mockMeetings } from "@/mock/meetings";
-import { mockProposals } from "@/mock/proposals";
-import { mockRepos } from "@/mock/integrations";
-import { getClientById } from "@/mock/clients";
+import { Calendar } from "lucide-react";
 import { formatRelative, formatDateTime } from "@/lib/format";
-import type { TicketRow } from "@/types/db";
+import type { TicketRow, MeetingRow, ProposalRow, RepoRow, ClientRow } from "@/types/db";
 import styles from "./HomeScreen.module.css";
-
-function repoName(repoId: string | null): string {
-  return mockRepos.find((r) => r.id === repoId)?.full_name ?? "–";
-}
 
 const NOW = new Date("2026-08-02T14:10:00Z");
 
@@ -29,7 +21,15 @@ interface AttentionTicket {
   body: string;
 }
 
-export function HomeScreen() {
+interface HomeScreenProps {
+  tickets: TicketRow[];
+  meetings: MeetingRow[];
+  proposals: ProposalRow[];
+  repos: RepoRow[];
+  clients: ClientRow[];
+}
+
+export function HomeScreen({ tickets, meetings, proposals, repos, clients }: HomeScreenProps) {
   const router = useRouter();
   const [meetingDismissed, setMeetingDismissed] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -39,9 +39,17 @@ export function HomeScreen() {
     setTimeout(() => setToast(null), 2400);
   }
 
+  function repoName(repoId: string | null): string {
+    return repos.find((r) => r.id === repoId)?.full_name ?? "–";
+  }
+
+  function clientName(clientId: string | null): string {
+    return clients.find((c) => c.id === clientId)?.name ?? "–";
+  }
+
   const attentionTickets: AttentionTicket[] = useMemo(
     () =>
-      mockTickets
+      tickets
         .filter((t) => t.state === "awaiting_plan_approval" || t.state === "review")
         .map((t) => ({
           ticket: t,
@@ -52,28 +60,28 @@ export function HomeScreen() {
               ? "Agent has produced a plan. Review before execution begins."
               : `PR opened on ${repoName(t.repo_id)}. Ready to merge.`,
         })),
-    []
+    [tickets, repos]
   );
 
-  const suggestedMeeting = mockMeetings.find((m) => m.status === "scheduled" && !m.known_client);
+  const suggestedMeeting = meetings.find((m) => m.status === "scheduled" && !m.known_client);
 
   const activeTickets = useMemo(
-    () => [...mockTickets].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 4),
-    []
+    () => [...tickets].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 4),
+    [tickets]
   );
 
   const upcomingMeetings = useMemo(
     () =>
-      mockMeetings
+      meetings
         .filter((m) => m.status === "scheduled")
         .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
         .slice(0, 3),
-    []
+    [meetings]
   );
 
   const recentProposals = useMemo(
-    () => [...mockProposals].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 3),
-    []
+    () => [...proposals].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 3),
+    [proposals]
   );
 
   const attentionCount = attentionTickets.length + (suggestedMeeting && !meetingDismissed ? 1 : 0);
@@ -176,16 +184,13 @@ export function HomeScreen() {
             </div>
             {upcomingMeetings.length === 0 ? (
               <div className={styles.meetingEmpty}>
-                No meetings scheduled. Connect Google Calendar in Settings to detect them automatically.
+                No meetings scheduled. Add one manually from Meetings.
               </div>
             ) : (
               <div className={styles.meetingList}>
                 {upcomingMeetings.map((m) => (
                   <div key={m.id} className={styles.meetingRow}>
-                    <svg className={styles.meetingIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="1.5">
-                      <rect x="3" y="4" width="18" height="17" rx="2" />
-                      <path d="M3 9h18M8 2v4M16 2v4" strokeLinecap="round" />
-                    </svg>
+                    <Calendar className={styles.meetingIcon} width={16} height={16} color="var(--ink-3)" strokeWidth={1.5} />
                     <div className={styles.meetingInfo}>
                       <div className={styles.meetingTitle}>{m.title}</div>
                       <div className={styles.meetingTime}>{formatDateTime(m.starts_at)}</div>
@@ -221,7 +226,7 @@ export function HomeScreen() {
             emptyState="No proposals yet. Import past work from Settings to start drafting in your voice."
             renderRow={(p) => [
               <span key="title" style={{ color: "var(--ink)" }}>{p.title}</span>,
-              <span key="client" style={{ color: "var(--ink-2)" }}>{getClientById(p.client_id ?? "")?.name ?? "–"}</span>,
+              <span key="client" style={{ color: "var(--ink-2)" }}>{clientName(p.client_id)}</span>,
               <StateChip key="state" state={p.state} />,
               <span key="sent" style={{ fontFamily: "var(--font-mono)", color: "var(--ink-3)", fontSize: 12 }}>
                 {p.sent_at ? formatRelative(p.sent_at, NOW) : "Not sent"}

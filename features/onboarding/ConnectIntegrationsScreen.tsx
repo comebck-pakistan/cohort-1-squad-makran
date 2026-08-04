@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { OnboardingHeader } from "@/components/layout/OnboardingHeader";
+import { Calendar } from "lucide-react";
+import { GithubMark } from "@/components/icons/GithubMark";
 import styles from "./ConnectIntegrationsScreen.module.css";
 
 const REPOS = ["acme-corp / storefront", "acme-corp / api-service", "acme-corp / marketing-site"];
@@ -35,9 +37,7 @@ export function ConnectIntegrationsScreen() {
           <Card>
             <div className={styles.row}>
               <div className={styles.rowMain}>
-                <svg className={styles.icon} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" strokeWidth="1.5">
-                  <path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 8v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 6.7 5.4 7 5.4 7a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 13.4c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V25" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <GithubMark className={styles.icon} width={24} height={24} color="var(--ink-2)" />
                 <div>
                   <div className={styles.title}>GitHub</div>
                   <div className={styles.desc}>
@@ -57,10 +57,7 @@ export function ConnectIntegrationsScreen() {
               <div className={styles.repoSelectWrap}>
                 <button className={styles.repoSelect} onClick={() => setRepoDropdownOpen((v) => !v)}>
                   <span className={styles.repoSelectValue}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="1.5">
-                      <rect x="3" y="4" width="18" height="16" rx="2" />
-                      <path d="M3 9h18M8 2v4M16 2v4" strokeLinecap="round" />
-                    </svg>
+                    <GithubMark width={16} height={16} color="var(--ink-3)" />
                     <span className={styles.repoSelectText}>{selectedRepo}</span>
                   </span>
                   <span className={styles.repoCaret}>▾</span>
@@ -96,10 +93,7 @@ export function ConnectIntegrationsScreen() {
           <Card>
             <div className={styles.row} style={{ alignItems: "center" }}>
               <div className={styles.rowMain}>
-                <svg className={styles.icon} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" strokeWidth="1.5">
-                  <rect x="3" y="4" width="18" height="17" rx="2" />
-                  <path d="M3 9h18M8 2v4M16 2v4M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" strokeLinecap="round" />
-                </svg>
+                <Calendar className={styles.icon} width={24} height={24} color="var(--ink-2)" strokeWidth={1.5} />
                 <div>
                   <div className={styles.title}>Google Calendar</div>
                   <div className={styles.desc} style={{ marginBottom: 0 }}>

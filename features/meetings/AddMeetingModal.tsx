@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Search } from "lucide-react";
 import { scheduleBotMeeting, createManualMeeting } from "@/lib/actions/meetings";
 import type { MeetingRow } from "@/types/db";
 import styles from "./AddMeetingModal.module.css";
@@ -112,10 +113,7 @@ export function AddMeetingModal({ onClose, onCreated }: AddMeetingModalProps) {
                   Client <span className={styles.fieldOptional}>(optional)</span>
                 </div>
                 <div className={styles.searchWrap}>
-                  <svg className={styles.searchIcon} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="1.8">
-                    <circle cx="11" cy="11" r="7" />
-                    <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
-                  </svg>
+                  <Search className={styles.searchIcon} width={14} height={14} color="var(--ink-3)" strokeWidth={1.8} />
                   <input
                     className={styles.searchInput}
                     placeholder="Search clients…"

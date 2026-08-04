@@ -7,23 +7,12 @@ import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { Calendar, Puzzle } from "lucide-react";
+import { GithubMark } from "@/components/icons/GithubMark";
 import { connectRepo, removeRepo, setDefaultRepo, disconnectGithub } from "@/lib/actions/repos";
 import { generateExtensionToken } from "@/lib/actions/extension-tokens";
 import type { RepoRow, IntegrationRow } from "@/types/db";
 import styles from "./IntegrationsScreen.module.css";
-
-const POLICIES = [
-  {
-    key: "smart",
-    title: "Smart auto-join",
-    desc: "Send a bot automatically only for known clients. All other meetings surface as one-click suggestions.",
-  },
-  {
-    key: "always",
-    title: "Always suggest",
-    desc: "Every detected meeting surfaces as a suggestion, no bots sent without your click.",
-  },
-] as const;
 
 interface IntegrationsScreenProps {
   initialIntegrations: IntegrationRow[];
@@ -41,10 +30,8 @@ export function IntegrationsScreen({
   const router = useRouter();
   const [repos, setRepos] = useState<RepoRow[]>(initialRepos);
   const [repoOptions] = useState<string[]>(initialRepoOptions);
-  const [policy, setPolicy] = useState<"smart" | "always">("smart");
   const githubIntegration = initialIntegrations.find((i) => i.category === "repo" && i.provider === "github");
   const [githubConnected, setGithubConnected] = useState(githubIntegration?.status === "connected");
-  const [calendarConnected, setCalendarConnected] = useState(true);
   const [newRepo, setNewRepo] = useState("");
   const [connecting, setConnecting] = useState(false);
   const availableRepoOptions = repoOptions.filter((name) => !repos.some((r) => r.full_name === name));
@@ -124,9 +111,7 @@ export function IntegrationsScreen({
 
       <Card style={{ marginBottom: 16 }}>
         <div className={styles.providerRow}>
-          <svg className={styles.providerIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" strokeWidth="1.5">
-            <path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 8v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 6.7 5.4 7 5.4 7a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 13.4c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V25" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <GithubMark className={styles.providerIcon} width={20} height={20} color="var(--ink-2)" />
           <div className={styles.providerName}>GitHub</div>
           <div className={styles.spacer} />
           {githubConnected ? (
@@ -194,10 +179,7 @@ export function IntegrationsScreen({
             {repos.map((r) => (
               <div key={r.id} className={styles.repoRow}>
                 <span className={styles.repoName}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="1.6">
-                    <rect x="3" y="4" width="18" height="16" rx="2" />
-                    <path d="M3 9h18M8 2v4M16 2v4" strokeLinecap="round" />
-                  </svg>
+                  <GithubMark width={14} height={14} color="var(--ink-3)" />
                   <span className={styles.repoNameText}>{r.full_name}</span>
                 </span>
                 <span className={styles.repoBranch}>default</span>
@@ -217,65 +199,20 @@ export function IntegrationsScreen({
 
       <Card style={{ marginBottom: 16 }}>
         <div className={styles.providerRow}>
-          <svg className={styles.providerIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" strokeWidth="1.5">
-            <rect x="3" y="4" width="18" height="17" rx="2" />
-            <path d="M3 9h18M8 2v4M16 2v4" strokeLinecap="round" />
-          </svg>
+          <Calendar className={styles.providerIcon} width={20} height={20} color="var(--ink-2)" strokeWidth={1.5} />
           <div className={styles.providerName}>Google Calendar</div>
           <div className={styles.spacer} />
-          {calendarConnected ? (
-            <>
-              <span className={styles.connectedPill}>● Connected</span>
-              <span className={styles.accountLabel}>jordan@gmail.com</span>
-              <button
-                className={styles.disconnectLink}
-                onClick={() => {
-                  setCalendarConnected(false);
-                  showToast("Google Calendar disconnected.");
-                }}
-              >
-                Disconnect
-              </button>
-            </>
-          ) : (
-            <Button variant="primary" onClick={() => setCalendarConnected(true)}>
-              Connect Google Calendar
-            </Button>
-          )}
+          <span className={styles.accountLabel}>Not available yet.</span>
         </div>
         <div className={styles.subNote}>
-          Skribby Calendar Integration · reads upcoming events with video links · no per-event
-          cost beyond bot usage
-        </div>
-
-        <div className={styles.divider} />
-
-        <div className={styles.subSectionTitle} style={{ marginBottom: 12 }}>
-          Auto-join policy
-        </div>
-        <div className={styles.policyList}>
-          {POLICIES.map((p) => {
-            const selected = policy === p.key;
-            return (
-              <div key={p.key} className={styles.policyOption} onClick={() => setPolicy(p.key)}>
-                {selected && <div className={styles.policyBar} />}
-                <span className={[styles.radio, selected && styles.radioSelected].filter(Boolean).join(" ")} />
-                <div>
-                  <div className={styles.policyTitle}>{p.title}</div>
-                  <div className={styles.policyDesc}>{p.desc}</div>
-                </div>
-              </div>
-            );
-          })}
+          Calendar auto-detection isn&rsquo;t built yet, meetings are added manually for now (see
+          Meetings). Skribby&rsquo;s bot still joins a manually added meeting once you confirm it.
         </div>
       </Card>
 
       <Card style={{ marginBottom: 16 }}>
         <div className={styles.providerRow}>
-          <svg className={styles.providerIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" strokeWidth="1.5">
-            <rect x="4" y="3" width="16" height="18" rx="2" />
-            <path d="M9 21v-4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <Puzzle className={styles.providerIcon} width={20} height={20} color="var(--ink-2)" strokeWidth={1.5} />
           <div className={styles.providerName}>Browser extension</div>
           <div className={styles.spacer} />
           {extensionConnected ? (

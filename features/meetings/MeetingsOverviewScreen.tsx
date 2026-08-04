@@ -6,19 +6,22 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { AddMeetingModal } from "./AddMeetingModal";
-import { getClientById } from "@/mock/clients";
 import { formatRelative, formatDateTime } from "@/lib/format";
-import type { MeetingRow } from "@/types/db";
+import type { MeetingRow, ClientRow } from "@/types/db";
 import styles from "./MeetingsOverviewScreen.module.css";
 
 const NOW = new Date("2026-08-02T14:10:00Z");
 
 interface MeetingsOverviewScreenProps {
   initialMeetings: MeetingRow[];
+  clients: ClientRow[];
 }
 
-export function MeetingsOverviewScreen({ initialMeetings }: MeetingsOverviewScreenProps) {
+export function MeetingsOverviewScreen({ initialMeetings, clients }: MeetingsOverviewScreenProps) {
   const router = useRouter();
+  function clientName(clientId: string | null): string | undefined {
+    return clients.find((c) => c.id === clientId)?.name;
+  }
   const [optimistic, setOptimistic] = useState<MeetingRow[]>([]);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
@@ -129,7 +132,7 @@ export function MeetingsOverviewScreen({ initialMeetings }: MeetingsOverviewScre
             renderRow={(m) => [
               <span key="title" style={{ color: "var(--ink)" }}>{m.title}</span>,
               <span key="client" style={{ color: m.client_id ? "var(--ink-2)" : "var(--ink-3)" }}>
-                {m.client_id ? getClientById(m.client_id)?.name : "–"}
+                {m.client_id ? clientName(m.client_id) : "–"}
               </span>,
               <span key="when" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-3)" }}>
                 {formatDateTime(m.starts_at)}
@@ -222,7 +225,7 @@ export function MeetingsOverviewScreen({ initialMeetings }: MeetingsOverviewScre
               return [
                 <span key="title" style={{ color: "var(--ink)" }}>{m.title}</span>,
                 <span key="client" style={{ color: m.client_id ? "var(--ink-2)" : "var(--ink-3)" }}>
-                  {m.client_id ? getClientById(m.client_id)?.name : "–"}
+                  {m.client_id ? clientName(m.client_id) : "–"}
                 </span>,
                 <span key="date" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-3)" }}>
                   {new Date(m.starts_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
