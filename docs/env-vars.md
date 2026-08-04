@@ -51,6 +51,16 @@ GITHUB_OAUTH_CLIENT_SECRET=
 # M5: 32-byte key (64 hex chars) used to encrypt the stored GitHub access token at rest
 # (AES-256-GCM, lib/crypto.ts). Generate with: openssl rand -hex 32
 INTEGRATION_TOKEN_ENCRYPTION_KEY=
+
+# M11: Google Calendar meeting detection. Real per-user OAuth (Authorization Code flow,
+# app-owned, separate from Supabase Auth's sign-in provider), reuses the same
+# SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID/SECRET above rather than a second OAuth app,
+# since a single Google Cloud OAuth client supports multiple redirect URIs and scopes.
+# On console.cloud.google.com, on that same OAuth client: (1) enable the "Google Calendar
+# API", (2) add scope https://www.googleapis.com/auth/calendar.readonly to the OAuth
+# consent screen, (3) add redirect URI http://localhost:3000/api/google-calendar/oauth/callback,
+# (4) if the consent screen is in "Testing" status, confirm the account is a test user
+# (already required for sign-in to work). No new env vars needed.
 ```
 
 Until Google/GitHub client id + secret are filled in, those two sign-in buttons will error at redirect. OTP email sign-in works with none of this filled in beyond the Supabase URL/anon key, since local dev catches OTP emails at `http://127.0.0.1:54324` (Mailpit) instead of sending them.

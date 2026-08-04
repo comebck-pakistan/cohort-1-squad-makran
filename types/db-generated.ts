@@ -200,7 +200,9 @@ export type Database = {
           id: string
           owner_id: string
           provider: string
+          refresh_token: string | null
           status: string
+          token_expires_at: string | null
         }
         Insert: {
           access_token?: string | null
@@ -210,7 +212,9 @@ export type Database = {
           id?: string
           owner_id: string
           provider: string
+          refresh_token?: string | null
           status?: string
+          token_expires_at?: string | null
         }
         Update: {
           access_token?: string | null
@@ -220,7 +224,9 @@ export type Database = {
           id?: string
           owner_id?: string
           provider?: string
+          refresh_token?: string | null
           status?: string
+          token_expires_at?: string | null
         }
         Relationships: []
       }
@@ -229,9 +235,11 @@ export type Database = {
           client_id: string | null
           draft_tickets: Json
           failure_reason: string | null
+          google_event_id: string | null
           guest_email: string | null
           id: string
           known_client: boolean
+          meeting_url: string | null
           owner_id: string
           skribby_bot_id: string | null
           source: string
@@ -245,9 +253,11 @@ export type Database = {
           client_id?: string | null
           draft_tickets?: Json
           failure_reason?: string | null
+          google_event_id?: string | null
           guest_email?: string | null
           id?: string
           known_client?: boolean
+          meeting_url?: string | null
           owner_id: string
           skribby_bot_id?: string | null
           source: string
@@ -261,9 +271,11 @@ export type Database = {
           client_id?: string | null
           draft_tickets?: Json
           failure_reason?: string | null
+          google_event_id?: string | null
           guest_email?: string | null
           id?: string
           known_client?: boolean
+          meeting_url?: string | null
           owner_id?: string
           skribby_bot_id?: string | null
           source?: string

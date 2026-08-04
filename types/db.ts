@@ -45,7 +45,7 @@ export type RepoRow = Omit<Tables["repos"]["Row"], "provider"> & {
 
 export type MeetingSource = "bot_skribby" | "manual_paste" | "manual_upload";
 export type TranscriptSource = "caption" | "whisper_fallback" | "manual";
-export type MeetingStatus = "scheduled" | "in_progress" | "processing" | "ready" | "failed";
+export type MeetingStatus = "scheduled" | "in_progress" | "processing" | "ready" | "failed" | "dismissed";
 
 export interface DraftTicket {
   title: string;

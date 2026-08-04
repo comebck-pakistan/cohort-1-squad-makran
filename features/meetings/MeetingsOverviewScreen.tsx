@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { AddMeetingModal } from "./AddMeetingModal";
+import { confirmCalendarSuggestion, dismissCalendarSuggestion } from "@/lib/actions/meetings";
 import { formatRelative, formatDateTime } from "@/lib/format";
 import type { MeetingRow, ClientRow } from "@/types/db";
 import styles from "./MeetingsOverviewScreen.module.css";
@@ -23,9 +24,9 @@ export function MeetingsOverviewScreen({ initialMeetings, clients }: MeetingsOve
     return clients.find((c) => c.id === clientId)?.name;
   }
   const [optimistic, setOptimistic] = useState<MeetingRow[]>([]);
-  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [suggestionBusy, setSuggestionBusy] = useState(false);
 
   const meetings = useMemo(
     () => [...optimistic.filter((o) => !initialMeetings.some((m) => m.id === o.id)), ...initialMeetings],
@@ -37,9 +38,7 @@ export function MeetingsOverviewScreen({ initialMeetings, clients }: MeetingsOve
     setTimeout(() => setToast(null), 2400);
   }
 
-  const suggestion = meetings.find(
-    (m) => m.status === "scheduled" && !m.known_client && !dismissedIds.includes(m.id)
-  );
+  const suggestion = meetings.find((m) => m.status === "scheduled" && !m.known_client && m.google_event_id);
 
   const upcoming = useMemo(
     () => meetings.filter((m) => m.status === "scheduled").sort((a, b) => a.starts_at.localeCompare(b.starts_at)),
@@ -92,26 +91,42 @@ export function MeetingsOverviewScreen({ initialMeetings, clients }: MeetingsOve
               <div style={{ flex: 1, minWidth: 280 }}>
                 <div className={styles.eyebrow}>● Action needed · Calendar suggestion</div>
                 <div className={styles.cardTitle}>{suggestion.title}</div>
-                <div className={styles.cardMeta}>{formatDateTime(suggestion.starts_at)} · Google Meet</div>
+                <div className={styles.cardMeta}>{formatDateTime(suggestion.starts_at)} · Video call</div>
                 <div className={styles.cardNote}>
-                  Detected from calendar · contact not on file, confirm before a bot is sent
+                  Detected from your Google Calendar · contact not on file, confirm before a bot is sent
                 </div>
               </div>
               <div className={styles.cardActions}>
                 <Button
                   variant="primary"
-                  onClick={() => {
-                    setDismissedIds((ids) => [...ids, suggestion.id]);
-                    showToast(`Bot will join: ${suggestion.title}.`);
+                  disabled={suggestionBusy}
+                  onClick={async () => {
+                    setSuggestionBusy(true);
+                    try {
+                      await confirmCalendarSuggestion(suggestion.id);
+                      showToast(`Bot will join: ${suggestion.title}.`);
+                      router.refresh();
+                    } catch (err) {
+                      showToast(err instanceof Error ? err.message : "Could not send the bot.");
+                    } finally {
+                      setSuggestionBusy(false);
+                    }
                   }}
                 >
                   Confirm &amp; send bot
                 </Button>
                 <Button
                   variant="ghost"
-                  onClick={() => {
-                    setDismissedIds((ids) => [...ids, suggestion.id]);
-                    showToast("Suggestion dismissed.");
+                  disabled={suggestionBusy}
+                  onClick={async () => {
+                    setSuggestionBusy(true);
+                    try {
+                      await dismissCalendarSuggestion(suggestion.id);
+                      showToast("Suggestion dismissed.");
+                      router.refresh();
+                    } finally {
+                      setSuggestionBusy(false);
+                    }
                   }}
                 >
                   Dismiss

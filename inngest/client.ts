@@ -32,3 +32,7 @@ export interface TicketStateChanged {
   ticketId: string;
   state: string;
 }
+
+export interface CalendarConnected {
+  ownerId: string;
+}

@@ -72,6 +72,8 @@ export async function GET(request: Request) {
       connected_at: new Date().toISOString(),
       account_label: login,
       access_token: encrypted,
+      refresh_token: null,
+      token_expires_at: null,
     });
   }
 

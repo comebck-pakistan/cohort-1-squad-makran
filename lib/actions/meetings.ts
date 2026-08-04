@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createMeeting, updateMeeting, listMeetings } from "@/lib/db/meetings";
+import { createMeeting, updateMeeting, listMeetings, getMeeting } from "@/lib/db/meetings";
 import { findClientContactByEmail } from "@/lib/db/client-contacts";
 import { createTicket } from "@/lib/db/tickets";
 import { createSkribbyBot } from "@/lib/skribby";
@@ -59,6 +59,8 @@ export async function scheduleBotMeeting(input: ScheduleBotMeetingInput): Promis
     known_client: knownClient,
     guest_email: input.guestEmail,
     transcript_text: null,
+    google_event_id: null,
+    meeting_url: input.meetingUrl,
   });
 
   if (knownClient) {
@@ -93,6 +95,8 @@ export async function createManualMeeting(input: CreateManualMeetingInput): Prom
     known_client: Boolean(input.clientId),
     guest_email: null,
     transcript_text: null,
+    google_event_id: null,
+    meeting_url: null,
   });
 
   await inngest.send({
@@ -161,4 +165,21 @@ export async function promoteDraftTickets(
 export async function discardDraftTickets(meetingId: string): Promise<void> {
   const { supabase } = await requireOwnerId();
   await updateMeeting(supabase, meetingId, { draft_tickets: [] });
+}
+
+/** Real confirm for a calendar-detected suggestion: the bot hasn't been sent yet, this is the first time it is. */
+export async function confirmCalendarSuggestion(meetingId: string): Promise<void> {
+  const { supabase } = await requireOwnerId();
+  const meeting = await getMeeting(supabase, meetingId);
+  if (!meeting) throw new Error("Meeting not found.");
+  if (meeting.known_client || meeting.skribby_bot_id) return;
+  if (!meeting.meeting_url) throw new Error("This meeting has no video link to send a bot to.");
+
+  const bot = await createSkribbyBot({ meetingUrl: meeting.meeting_url });
+  await updateMeeting(supabase, meetingId, { skribby_bot_id: bot.id });
+}
+
+export async function dismissCalendarSuggestion(meetingId: string): Promise<void> {
+  const { supabase } = await requireOwnerId();
+  await updateMeeting(supabase, meetingId, { status: "dismissed" });
 }

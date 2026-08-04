@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/Select";
 import { Calendar, Puzzle } from "lucide-react";
 import { GithubMark } from "@/components/icons/GithubMark";
 import { connectRepo, removeRepo, setDefaultRepo, disconnectGithub } from "@/lib/actions/repos";
+import { disconnectGoogleCalendar } from "@/lib/actions/calendar";
 import { generateExtensionToken } from "@/lib/actions/extension-tokens";
 import type { RepoRow, IntegrationRow } from "@/types/db";
 import styles from "./IntegrationsScreen.module.css";
@@ -36,6 +37,12 @@ export function IntegrationsScreen({
   const [connecting, setConnecting] = useState(false);
   const availableRepoOptions = repoOptions.filter((name) => !repos.some((r) => r.full_name === name));
   const [toast, setToast] = useState<string | null>(null);
+  const calendarIntegration = initialIntegrations.find(
+    (i) => i.category === "calendar" && i.provider === "google_calendar"
+  );
+  const [calendarConnected, setCalendarConnected] = useState(calendarIntegration?.status === "connected");
+  const [calendarAccountLabel, setCalendarAccountLabel] = useState(calendarIntegration?.account_label ?? null);
+  const [disconnectingCalendar, setDisconnectingCalendar] = useState(false);
   const [extensionConnected, setExtensionConnected] = useState(initialExtensionConnected);
   const [generatingToken, setGeneratingToken] = useState(false);
   const [newToken, setNewToken] = useState<string | null>(null);
@@ -63,9 +70,25 @@ export function IntegrationsScreen({
     const connected = params.get("connected");
     const error = params.get("error");
     if (connected === "github") showToast("GitHub connected.");
-    if (error) showToast(`GitHub connect failed: ${error.replace(/_/g, " ")}`);
+    if (connected === "google_calendar") {
+      showToast("Google Calendar connected.");
+      setCalendarConnected(true);
+    }
+    if (error) showToast(`Connect failed: ${error.replace(/_/g, " ")}`);
     if (connected || error) window.history.replaceState({}, "", window.location.pathname);
   }, []);
+
+  async function handleDisconnectCalendar() {
+    setDisconnectingCalendar(true);
+    try {
+      await disconnectGoogleCalendar();
+      setCalendarConnected(false);
+      setCalendarAccountLabel(null);
+      showToast("Google Calendar disconnected.");
+    } finally {
+      setDisconnectingCalendar(false);
+    }
+  }
 
   async function handleConnectRepo() {
     const fullName = newRepo.trim();
@@ -202,11 +225,25 @@ export function IntegrationsScreen({
           <Calendar className={styles.providerIcon} width={20} height={20} color="var(--ink-2)" strokeWidth={1.5} />
           <div className={styles.providerName}>Google Calendar</div>
           <div className={styles.spacer} />
-          <span className={styles.accountLabel}>Not available yet.</span>
+          {calendarConnected ? (
+            <>
+              <span className={styles.connectedPill}>● Connected</span>
+              {calendarAccountLabel && <span className={styles.accountLabel}>{calendarAccountLabel}</span>}
+              <button className={styles.disconnectLink} onClick={handleDisconnectCalendar} disabled={disconnectingCalendar}>
+                {disconnectingCalendar ? "Disconnecting…" : "Disconnect"}
+              </button>
+            </>
+          ) : (
+            <a href="/api/google-calendar/oauth/start">
+              <Button variant="primary" style={{ height: 32, padding: "0 14px", fontSize: 13 }}>
+                Connect with Google Calendar
+              </Button>
+            </a>
+          )}
         </div>
         <div className={styles.subNote}>
-          Calendar auto-detection isn&rsquo;t built yet, meetings are added manually for now (see
-          Meetings). Skribby&rsquo;s bot still joins a manually added meeting once you confirm it.
+          OAuth (scope: calendar.readonly) · events with a video link and a known-client attendee
+          get a bot sent automatically, everything else surfaces as a suggestion on Meetings
         </div>
       </Card>
 
