@@ -197,7 +197,12 @@ export function MeetingsOverviewScreen({ initialMeetings, clients }: MeetingsOve
             renderRow={(m) => {
               const transcriptChip =
                 m.status === "failed" ? (
-                  <span className={[styles.statusPill, styles.statusFailed].join(" ")}>Failed to process</span>
+                  <span
+                    className={[styles.statusPill, styles.statusFailed].join(" ")}
+                    title={m.failure_reason ?? "Processing failed for an unknown reason."}
+                  >
+                    Failed to process
+                  </span>
                 ) : m.source === "manual_paste" ? (
                   <span className={[styles.statusPill, styles.statusNeutral].join(" ")}>Manual paste</span>
                 ) : (
@@ -240,6 +245,7 @@ export function MeetingsOverviewScreen({ initialMeetings, clients }: MeetingsOve
 
       {modalOpen && (
         <AddMeetingModal
+          clients={clients}
           onClose={() => setModalOpen(false)}
           onCreated={(meeting, msg) => {
             setModalOpen(false);

@@ -228,6 +228,7 @@ export type Database = {
         Row: {
           client_id: string | null
           draft_tickets: Json
+          failure_reason: string | null
           guest_email: string | null
           id: string
           known_client: boolean
@@ -243,6 +244,7 @@ export type Database = {
         Insert: {
           client_id?: string | null
           draft_tickets?: Json
+          failure_reason?: string | null
           guest_email?: string | null
           id?: string
           known_client?: boolean
@@ -258,6 +260,7 @@ export type Database = {
         Update: {
           client_id?: string | null
           draft_tickets?: Json
+          failure_reason?: string | null
           guest_email?: string | null
           id?: string
           known_client?: boolean
@@ -371,6 +374,7 @@ export type Database = {
       }
       repos: {
         Row: {
+          client_id: string | null
           full_name: string
           id: string
           integration_id: string
@@ -379,6 +383,7 @@ export type Database = {
           provider: string
         }
         Insert: {
+          client_id?: string | null
           full_name: string
           id?: string
           integration_id: string
@@ -387,6 +392,7 @@ export type Database = {
           provider: string
         }
         Update: {
+          client_id?: string | null
           full_name?: string
           id?: string
           integration_id?: string
@@ -395,6 +401,13 @@ export type Database = {
           provider?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "repos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "repos_integration_id_fkey"
             columns: ["integration_id"]
@@ -409,6 +422,7 @@ export type Database = {
           attempt_count: number
           client_id: string | null
           created_at: string
+          failure_reason: string | null
           id: string
           owner_id: string
           plan_summary: string | null
@@ -422,6 +436,7 @@ export type Database = {
           attempt_count?: number
           client_id?: string | null
           created_at?: string
+          failure_reason?: string | null
           id?: string
           owner_id: string
           plan_summary?: string | null
@@ -435,6 +450,7 @@ export type Database = {
           attempt_count?: number
           client_id?: string | null
           created_at?: string
+          failure_reason?: string | null
           id?: string
           owner_id?: string
           plan_summary?: string | null

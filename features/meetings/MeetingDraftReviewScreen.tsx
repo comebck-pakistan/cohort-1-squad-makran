@@ -96,7 +96,9 @@ export function MeetingDraftReviewScreen({ meeting, repos, clients }: MeetingDra
             <div className={styles.ticketList}>
               {tickets.map((t, i) => {
                 const expanded = t.id === expandedId;
-                const repoLabel = repos.find((r) => r.id === t.repoId)?.full_name ?? "–";
+                const repoLabel = client
+                  ? `auto-managed repo for ${client.name}`
+                  : (repos.find((r) => r.id === t.repoId)?.full_name ?? "–");
                 return (
                   <div key={t.id} className={styles.ticketCard}>
                     <div className={styles.grip}>
@@ -182,7 +184,7 @@ export function MeetingDraftReviewScreen({ meeting, repos, clients }: MeetingDra
         </Button>
         <div className={styles.footerRight}>
           <span className={styles.countLabel}>
-            {tickets.length} ticket{tickets.length === 1 ? "" : "s"} will be created in backlog
+            {tickets.length} ticket{tickets.length === 1 ? "" : "s"} will be created and assigned to the agent
           </span>
           <Button
             variant="primary"
@@ -194,7 +196,7 @@ export function MeetingDraftReviewScreen({ meeting, repos, clients }: MeetingDra
                 meeting.client_id,
                 tickets.map((t) => ({ title: t.title, body: t.body, repoId: t.repoId }))
               );
-              showToast(`${tickets.length} tickets created in backlog.`);
+              showToast(`${tickets.length} ticket${tickets.length === 1 ? "" : "s"} created, agent starting.`);
               setTimeout(() => router.push("/tickets"), 900);
             }}
           >

@@ -23,7 +23,7 @@ export type ClientContactRow = Tables["client_contacts"]["Row"];
 
 export type ExtensionTokenRow = Tables["extension_tokens"]["Row"];
 
-export type NotificationType = "pr-ready" | "needs-human" | "briefing";
+export type NotificationType = "pr-ready" | "needs-human" | "briefing" | "repo-created";
 
 export type NotificationRow = Omit<Tables["notifications"]["Row"], "type"> & {
   type: NotificationType;

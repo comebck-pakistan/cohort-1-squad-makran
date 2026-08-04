@@ -5,6 +5,7 @@ import { createMeeting, updateMeeting, listMeetings } from "@/lib/db/meetings";
 import { findClientContactByEmail } from "@/lib/db/client-contacts";
 import { createTicket } from "@/lib/db/tickets";
 import { createSkribbyBot } from "@/lib/skribby";
+import { ensureClientRepo } from "@/lib/actions/client-repos";
 import { inngest } from "@/inngest/client";
 import type { MeetingRow } from "@/types/db";
 
@@ -35,17 +36,23 @@ export interface ScheduleBotMeetingInput {
 /** Skribby bot-join path. Requires SKRIBBY_API_KEY, real Skribby account. */
 export async function scheduleBotMeeting(input: ScheduleBotMeetingInput): Promise<MeetingRow> {
   const { supabase, ownerId } = await requireOwnerId();
-  const { knownClient, clientId } = await resolveKnownClient(supabase, input.guestEmail);
+  const { knownClient: emailKnownClient, clientId: emailClientId } = await resolveKnownClient(
+    supabase,
+    input.guestEmail
+  );
+  // A client picked directly in the modal is just as "known" as one resolved from the guest email.
+  const knownClient = Boolean(input.clientId) || emailKnownClient;
 
   const bot = await createSkribbyBot({ meetingUrl: input.meetingUrl });
 
   const meeting = await createMeeting(supabase, {
     owner_id: ownerId,
-    client_id: input.clientId ?? clientId,
+    client_id: input.clientId ?? emailClientId,
     title: input.title,
     source: "bot_skribby",
     transcript_source: null,
     status: "scheduled",
+    failure_reason: null,
     skribby_bot_id: bot.id,
     draft_tickets: [],
     starts_at: input.startsAt,
@@ -79,6 +86,7 @@ export async function createManualMeeting(input: CreateManualMeetingInput): Prom
     source: "manual_paste",
     transcript_source: "manual",
     status: "processing",
+    failure_reason: null,
     skribby_bot_id: null,
     draft_tickets: [],
     starts_at: input.startsAt,
@@ -117,17 +125,34 @@ export async function promoteDraftTickets(
 ): Promise<void> {
   const { supabase, ownerId } = await requireOwnerId();
 
+  // Known client: repo is fully automatic (created once, reused after), no manual repo pick.
+  // Unknown client: there's nothing to hang a repo off of, keep the caller's manual choice.
+  let repoId: string | null = null;
+  let usedAutoRepo = false;
+  if (clientId) {
+    const { data: client, error } = await supabase.from("clients").select("name").eq("id", clientId).single();
+    if (error) throw error;
+    const repo = await ensureClientRepo(clientId, client.name);
+    repoId = repo.id;
+    usedAutoRepo = true;
+  }
+
   for (const t of tickets) {
-    await createTicket(supabase, {
+    const ticket = await createTicket(supabase, {
       owner_id: ownerId,
       client_id: clientId,
-      repo_id: t.repoId,
+      repo_id: usedAutoRepo ? repoId : t.repoId,
       title: t.title,
       plan_summary: t.body,
-      state: "backlog",
+      failure_reason: null,
+      state: "agent_running",
       pr_url: null,
       attempt_count: 0,
     });
+    // Gate removed: assigning the agent is a no-decision "go" click, plan approval right
+    // after is the real safety checkpoint (agent hasn't touched the repo yet at this point).
+    await inngest.send({ name: "ticket/state-changed", data: { ticketId: ticket.id, state: "agent_running" } });
+    await inngest.send({ name: "ticket/agent-assigned", data: { ticketId: ticket.id } });
   }
 
   await updateMeeting(supabase, meetingId, { draft_tickets: [] });

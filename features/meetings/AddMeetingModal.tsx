@@ -5,27 +5,88 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Search } from "lucide-react";
 import { scheduleBotMeeting, createManualMeeting } from "@/lib/actions/meetings";
-import type { MeetingRow } from "@/types/db";
+import type { MeetingRow, ClientRow } from "@/types/db";
 import styles from "./AddMeetingModal.module.css";
 
 interface AddMeetingModalProps {
+  clients: ClientRow[];
   onClose: () => void;
   onCreated: (meeting: MeetingRow, message: string) => void;
 }
 
 type Mode = "bot" | "manual";
 
-export function AddMeetingModal({ onClose, onCreated }: AddMeetingModalProps) {
+export function AddMeetingModal({ clients, onClose, onCreated }: AddMeetingModalProps) {
   const [mode, setMode] = useState<Mode>("bot");
   const [title, setTitle] = useState("");
   const [meetingLink, setMeetingLink] = useState("");
   const [transcript, setTranscript] = useState("");
   const [clientQuery, setClientQuery] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [dateVal, setDateVal] = useState("2026-08-05");
   const [timeVal, setTimeVal] = useState("10:00");
   const [joinNowMode, setJoinNowMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const clientMatches =
+    clientQuery.trim() && !selectedClientId
+      ? clients.filter((c) => c.name.toLowerCase().includes(clientQuery.trim().toLowerCase())).slice(0, 6)
+      : [];
+
+  function selectClient(client: ClientRow) {
+    setSelectedClientId(client.id);
+    setClientQuery(client.name);
+  }
+
+  function clearClient() {
+    setSelectedClientId(null);
+    setClientQuery("");
+  }
+
+  function clientPickerField() {
+    return (
+      <div className={styles.field}>
+        <div className={styles.fieldLabel}>
+          Client <span className={styles.fieldOptional}>(optional)</span>
+        </div>
+        <div className={styles.searchWrap}>
+          <Search className={styles.searchIcon} width={14} height={14} color="var(--ink-3)" strokeWidth={1.8} />
+          <input
+            className={styles.searchInput}
+            placeholder="Search clients…"
+            value={clientQuery}
+            onChange={(e) => {
+              setSelectedClientId(null);
+              setClientQuery(e.target.value);
+            }}
+          />
+          {selectedClientId && (
+            <button type="button" className={styles.clearClientBtn} onClick={clearClient} aria-label="Clear client">
+              ×
+            </button>
+          )}
+          {clientMatches.length > 0 && (
+            <div className={styles.searchResults}>
+              {clientMatches.map((c) => (
+                <button
+                  type="button"
+                  key={c.id}
+                  className={styles.searchResultItem}
+                  onClick={() => selectClient(c)}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {clientQuery.trim() && !selectedClientId && clientMatches.length === 0 && (
+          <div className={styles.fieldHint}>No matching client. Meeting will be added with no client attached.</div>
+        )}
+      </div>
+    );
+  }
 
   async function submit() {
     if (!title.trim()) {
@@ -45,7 +106,7 @@ export function AddMeetingModal({ onClose, onCreated }: AddMeetingModalProps) {
         const meeting = await scheduleBotMeeting({
           title: title.trim(),
           meetingUrl: meetingLink.trim(),
-          clientId: null,
+          clientId: selectedClientId,
           guestEmail: null,
           startsAt,
         });
@@ -59,7 +120,7 @@ export function AddMeetingModal({ onClose, onCreated }: AddMeetingModalProps) {
         const meeting = await createManualMeeting({
           title: title.trim(),
           transcript,
-          clientId: null,
+          clientId: selectedClientId,
           startsAt: new Date().toISOString(),
         });
         onCreated(meeting, "Transcript received, drafting tickets.");
@@ -108,20 +169,7 @@ export function AddMeetingModal({ onClose, onCreated }: AddMeetingModalProps) {
                 <div className={styles.fieldHint}>The bot joins using only this link, no Zoom or Google account needed.</div>
               </div>
 
-              <div className={styles.field}>
-                <div className={styles.fieldLabel}>
-                  Client <span className={styles.fieldOptional}>(optional)</span>
-                </div>
-                <div className={styles.searchWrap}>
-                  <Search className={styles.searchIcon} width={14} height={14} color="var(--ink-3)" strokeWidth={1.8} />
-                  <input
-                    className={styles.searchInput}
-                    placeholder="Search clients…"
-                    value={clientQuery}
-                    onChange={(e) => setClientQuery(e.target.value)}
-                  />
-                </div>
-              </div>
+              {clientPickerField()}
 
               <div className={styles.field}>
                 <div className={styles.fieldLabel}>When</div>
@@ -166,17 +214,20 @@ export function AddMeetingModal({ onClose, onCreated }: AddMeetingModalProps) {
               </div>
             </>
           ) : (
-            <div className={styles.field}>
-              <div className={styles.fieldLabel}>Transcript</div>
-              <textarea
-                className={styles.textarea}
-                style={{ height: 160 }}
-                placeholder="Paste the meeting transcript text here..."
-                value={transcript}
-                onChange={(e) => setTranscript(e.target.value)}
-              />
-              <div className={styles.fieldHint}>Processed immediately, no bot or scheduling needed.</div>
-            </div>
+            <>
+              <div className={styles.field}>
+                <div className={styles.fieldLabel}>Transcript</div>
+                <textarea
+                  className={styles.textarea}
+                  style={{ height: 160 }}
+                  placeholder="Paste the meeting transcript text here..."
+                  value={transcript}
+                  onChange={(e) => setTranscript(e.target.value)}
+                />
+                <div className={styles.fieldHint}>Processed immediately, no bot or scheduling needed.</div>
+              </div>
+              {clientPickerField()}
+            </>
           )}
 
           {error && <div className={styles.fieldError}>{error}</div>}

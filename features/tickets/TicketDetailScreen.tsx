@@ -287,8 +287,9 @@ export function TicketDetailScreen({ ticket, runs, repoFullName, costEstimate, c
               <Card raised>
                 <div className={styles.cardBlockTitle}>Agent stopped</div>
                 <div className={styles.paragraph}>
-                  The agent tried this ticket {ticket.attempt_count} times and hit the retry cap
-                  without a passing run. No further automatic attempts will run.
+                  {ticket.failure_reason ??
+                    `The agent tried this ticket ${ticket.attempt_count} times and hit the retry cap without a passing run.`}{" "}
+                  No further automatic attempts will run.
                 </div>
                 <div className={styles.formActions} style={{ justifyContent: "flex-start" }}>
                   <Button variant="secondary" onClick={handleReassign} disabled={busy}>
