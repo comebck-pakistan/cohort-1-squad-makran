@@ -46,7 +46,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  const event = JSON.parse(rawBody) as SkribbyStatusUpdateEvent;
+  let event: SkribbyStatusUpdateEvent;
+  try {
+    event = JSON.parse(rawBody) as SkribbyStatusUpdateEvent;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
   if (event.type !== "status_update") {
     return NextResponse.json({ ok: true });
@@ -56,23 +61,32 @@ export async function POST(request: Request) {
   const newStatus = event.data.new_status;
   const supabase = createServiceClient();
 
-  const { data: meeting } = await supabase
+  const { data: meeting, error: findErr } = await supabase
     .from("meetings")
-    .select("id")
+    .select("id, status")
     .eq("skribby_bot_id", botId)
     .maybeSingle();
+  if (findErr) throw findErr;
 
   if (!meeting) {
     return NextResponse.json({ ok: true });
   }
 
   if (newStatus === "recording") {
-    await supabase.from("meetings").update({ status: "in_progress" }).eq("id", meeting.id);
+    const { error } = await supabase.from("meetings").update({ status: "in_progress" }).eq("id", meeting.id);
+    if (error) throw error;
   } else if (newStatus === "finished") {
-    await supabase.from("meetings").update({ status: "processing" }).eq("id", meeting.id);
+    // Skribby can redeliver the same "finished" event; once we've already moved past it, ack
+    // without re-updating or re-firing the event (a second fire would re-run ticketization).
+    if (meeting.status === "processing" || meeting.status === "ready") {
+      return NextResponse.json({ ok: true, duplicate: true });
+    }
+    const { error } = await supabase.from("meetings").update({ status: "processing" }).eq("id", meeting.id);
+    if (error) throw error;
     await inngest.send({ name: "meeting/ready-for-processing", data: { meetingId: meeting.id } });
   } else if (TERMINAL_FAILURE_STATUSES.has(newStatus)) {
-    await supabase.from("meetings").update({ status: "failed" }).eq("id", meeting.id);
+    const { error } = await supabase.from("meetings").update({ status: "failed" }).eq("id", meeting.id);
+    if (error) throw error;
   }
 
   return NextResponse.json({ ok: true });

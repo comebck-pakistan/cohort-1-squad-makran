@@ -1,3 +1,5 @@
+import { NonRetriableError, RetryAfterError } from "inngest";
+
 const API = "https://api.github.com";
 const AGENT_AUTHOR = { name: "Solvo Agent", email: "agent@solvo.dev" };
 
@@ -13,7 +15,19 @@ async function gh<T>(token: string, path: string, init?: RequestInit): Promise<T
   const res = await fetch(`${API}${path}`, { ...init, headers: { ...headers(token), ...init?.headers } });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`GitHub API ${init?.method ?? "GET"} ${path} failed (${res.status}): ${body}`);
+    const msg = `GitHub API ${init?.method ?? "GET"} ${path} failed (${res.status}): ${body}`;
+    if (res.status === 401) throw new NonRetriableError(`github_auth_failed: ${msg}`);
+    if (res.status === 429 || (res.status === 403 && res.headers.get("x-ratelimit-remaining") === "0")) {
+      const retryAfterSec = Number(res.headers.get("retry-after")) || 60;
+      throw new RetryAfterError(`github_rate_limited: ${msg}`, retryAfterSec * 1000);
+    }
+    if (res.status === 409 && body.includes("Git Repository is empty")) {
+      throw new NonRetriableError(`github_repo_empty: The connected repository has no commits yet.`);
+    }
+    if (res.status === 403 || res.status === 404 || res.status === 422) {
+      throw new NonRetriableError(`github_request_invalid: ${msg}`);
+    }
+    throw new Error(msg);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
@@ -26,6 +40,23 @@ export interface RepoInfo {
 
 export async function verifyRepoAccess(token: string, fullName: string): Promise<RepoInfo> {
   const data = await gh<{ full_name: string; default_branch: string }>(token, `/repos/${fullName}`);
+  return { fullName: data.full_name, defaultBranch: data.default_branch };
+}
+
+/** Creates a new private repo, initialized with a first commit so it's immediately branchable. */
+export async function createGithubRepo(
+  token: string,
+  input: { name: string; description?: string }
+): Promise<RepoInfo> {
+  const data = await gh<{ full_name: string; default_branch: string }>(token, `/user/repos`, {
+    method: "POST",
+    body: JSON.stringify({
+      name: input.name,
+      private: true,
+      auto_init: true,
+      description: input.description,
+    }),
+  });
   return { fullName: data.full_name, defaultBranch: data.default_branch };
 }
 

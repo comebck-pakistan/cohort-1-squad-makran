@@ -1,3 +1,4 @@
+import { NonRetriableError } from "inngest";
 import { inngest, type MeetingReadyForProcessing } from "@/inngest/client";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ticketizeTranscript } from "@/lib/llm/ticketize";
@@ -5,7 +6,24 @@ import { transcribeAudio } from "@/lib/llm/whisper";
 import { getSkribbyTranscript, getSkribbyRecordingUrl } from "@/lib/skribby";
 
 export const ticketizeMeeting = inngest.createFunction(
-  { id: "ticketize-meeting", triggers: [{ event: "meeting/ready-for-processing" }] },
+  {
+    id: "ticketize-meeting",
+    triggers: [{ event: "meeting/ready-for-processing" }],
+    // Any unhandled crash here (Whisper failure, ticketization LLM failure, a DB write throwing)
+    // otherwise leaves the meeting stuck at "processing" forever with no visibility.
+    onFailure: async ({ event, error, step }) => {
+      const original = event.data.event.data as MeetingReadyForProcessing;
+      const supabase = createServiceClient();
+      const reason = (error.message ?? "An unexpected error stopped processing.").slice(0, 500);
+      await step.run("mark-meeting-failed-on-crash", async () => {
+        const { error: updateError } = await supabase
+          .from("meetings")
+          .update({ status: "failed", failure_reason: reason })
+          .eq("id", original.meetingId);
+        if (updateError) throw updateError;
+      });
+    },
+  },
   async ({ event, step }) => {
     const { meetingId, transcript: providedTranscript } = event.data as MeetingReadyForProcessing;
     const supabase = createServiceClient();
@@ -34,17 +52,18 @@ export const ticketizeMeeting = inngest.createFunction(
       const botId = meeting.skribby_bot_id;
       transcript = await step.run("transcribe-fallback", async () => {
         const recordingUrl = await getSkribbyRecordingUrl(botId);
-        if (!recordingUrl) throw new Error("No recording available for Whisper fallback.");
+        if (!recordingUrl) throw new NonRetriableError("No recording available for Whisper fallback.");
         return transcribeAudio(new URL(recordingUrl));
       });
       transcriptSource = "whisper_fallback";
     }
 
     if (!transcript) {
+      const reason = "No transcript was available. The recording may have failed or produced no audio.";
       await step.run("mark-failed", async () => {
-        await supabase.from("meetings").update({ status: "failed" }).eq("id", meetingId);
+        await supabase.from("meetings").update({ status: "failed", failure_reason: reason }).eq("id", meetingId);
       });
-      return { status: "failed" as const, reason: "No transcript available" };
+      return { status: "failed" as const, reason };
     }
 
     const finalTranscript = transcript;

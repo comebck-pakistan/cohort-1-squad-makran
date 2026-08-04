@@ -8,7 +8,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { generatePlan, generateFileChanges, formatPlanSummary } from "@/lib/llm/agent";
 import { ensureBranch, commitFiles, openPullRequest, mergePullRequest, getCheckStatus, verifyRepoAccess } from "@/lib/github";
 import { updateTicket } from "@/lib/db/tickets";
-import { getGithubAccessToken } from "@/lib/db/integrations";
+import { getGithubAccessToken, updateIntegration } from "@/lib/db/integrations";
 import type { TicketRow } from "@/types/db";
 
 const MAX_ATTEMPTS = 3;
@@ -48,7 +48,41 @@ async function setTicketState(
  * iteration is one attempt, whether it ends in a CI failure or a human "request changes."
  */
 export const agentRun = inngest.createFunction(
-  { id: "agent-run", triggers: [{ event: "ticket/agent-assigned" }] },
+  {
+    id: "agent-run",
+    triggers: [{ event: "ticket/agent-assigned" }],
+    // Safety net for crashes that exhaust Inngest's own retries (revoked GitHub token,
+    // persistent OpenAI/GitHub 5xx, etc): without this the ticket is left stuck in whatever
+    // state the loop was in, invisible to the user forever.
+    onFailure: async ({ event, error, step }) => {
+      const original = event.data.event.data as TicketAgentAssigned;
+      const supabase = createServiceClient();
+      await step.run("mark-needs-human-on-crash", () =>
+        setTicketState(supabase, original.ticketId, {
+          state: "needs_human",
+          failure_reason: (error.message ?? "An unexpected error stopped the agent.").slice(0, 500),
+        })
+      );
+      if (error.message?.startsWith("github_auth_failed")) {
+        await step.run("mark-github-integration-error", async () => {
+          const { data: ticket } = await supabase
+            .from("tickets")
+            .select("owner_id")
+            .eq("id", original.ticketId)
+            .single();
+          if (!ticket) return;
+          const { data: integration } = await supabase
+            .from("integrations")
+            .select("id")
+            .eq("owner_id", ticket.owner_id)
+            .eq("category", "repo")
+            .eq("provider", "github")
+            .maybeSingle();
+          if (integration) await updateIntegration(supabase, integration.id, { status: "error" });
+        });
+      }
+    },
+  },
   async ({ event, step }) => {
     const { ticketId } = event.data as TicketAgentAssigned;
     const supabase = createServiceClient();
@@ -60,8 +94,11 @@ export const agentRun = inngest.createFunction(
     });
 
     if (!ticket.repo_id) {
-      await step.run("no-repo-needs-human", () => setTicketState(supabase, ticketId, { state: "needs_human" }));
-      return { status: "needs_human" as const, reason: "No repo connected to this ticket." };
+      const reason = "No repo connected to this ticket.";
+      await step.run("no-repo-needs-human", () =>
+        setTicketState(supabase, ticketId, { state: "needs_human", failure_reason: reason })
+      );
+      return { status: "needs_human" as const, reason };
     }
 
     const repo = await step.run("load-repo", async () => {
@@ -72,8 +109,11 @@ export const agentRun = inngest.createFunction(
 
     const githubToken = await step.run("load-github-token", () => getGithubAccessToken(supabase, ticket.owner_id));
     if (!githubToken) {
-      await step.run("no-github-token-needs-human", () => setTicketState(supabase, ticketId, { state: "needs_human" }));
-      return { status: "needs_human" as const, reason: "GitHub is not connected." };
+      const reason = "GitHub is not connected.";
+      await step.run("no-github-token-needs-human", () =>
+        setTicketState(supabase, ticketId, { state: "needs_human", failure_reason: reason })
+      );
+      return { status: "needs_human" as const, reason };
     }
 
     let feedback: string | undefined;
@@ -130,8 +170,11 @@ export const agentRun = inngest.createFunction(
           appendLog(supabase, run.id, planData ? "Plan rejected, re-planning" : "Plan approval timed out", false)
         );
         if (attempt === MAX_ATTEMPTS) {
-          await step.run(`needs-human-plan-${attempt}`, () => setTicketState(supabase, ticketId, { state: "needs_human" }));
-          return { status: "needs_human" as const, reason: "Plan rejected at max attempts." };
+          const reason = "Plan rejected at max attempts.";
+          await step.run(`needs-human-plan-${attempt}`, () =>
+            setTicketState(supabase, ticketId, { state: "needs_human", failure_reason: reason })
+          );
+          return { status: "needs_human" as const, reason };
         }
         continue;
       }
@@ -169,8 +212,11 @@ export const agentRun = inngest.createFunction(
       if (ciStatus !== "success") {
         feedback = `The test suite did not pass on attempt ${attempt}. Fix the failing checks.`;
         if (attempt === MAX_ATTEMPTS) {
-          await step.run(`needs-human-ci-${attempt}`, () => setTicketState(supabase, ticketId, { state: "needs_human" }));
-          return { status: "needs_human" as const, reason: "CI failed at max attempts." };
+          const reason = "CI failed at max attempts.";
+          await step.run(`needs-human-ci-${attempt}`, () =>
+            setTicketState(supabase, ticketId, { state: "needs_human", failure_reason: reason })
+          );
+          return { status: "needs_human" as const, reason };
         }
         continue;
       }
@@ -208,8 +254,11 @@ export const agentRun = inngest.createFunction(
       );
 
       if (attempt === MAX_ATTEMPTS) {
-        await step.run(`needs-human-review-${attempt}`, () => setTicketState(supabase, ticketId, { state: "needs_human" }));
-        return { status: "needs_human" as const, reason: "Changes requested at max attempts." };
+        const reason = "Changes requested at max attempts.";
+        await step.run(`needs-human-review-${attempt}`, () =>
+          setTicketState(supabase, ticketId, { state: "needs_human", failure_reason: reason })
+        );
+        return { status: "needs_human" as const, reason };
       }
 
       await step.run(`set-changes-requested-${attempt}`, () =>

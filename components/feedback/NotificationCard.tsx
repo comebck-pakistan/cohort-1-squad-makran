@@ -1,12 +1,13 @@
 import { ReactNode } from "react";
 import styles from "./NotificationCard.module.css";
 
-export type NotificationType = "pr-ready" | "needs-human" | "briefing";
+export type NotificationType = "pr-ready" | "needs-human" | "briefing" | "repo-created";
 
 const ACCENTS: Record<NotificationType, string> = {
   "pr-ready": "var(--verified)",
   "needs-human": "var(--risk)",
   briefing: "var(--signal)",
+  "repo-created": "var(--verified)",
 };
 
 interface NotificationCardProps {

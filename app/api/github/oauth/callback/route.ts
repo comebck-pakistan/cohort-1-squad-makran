@@ -12,6 +12,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
+  const oauthError = searchParams.get("error");
 
   const supabase = await createClient();
   const {
@@ -25,6 +26,9 @@ export async function GET(request: Request) {
     .find((c) => c.startsWith("github_oauth_state="))
     ?.split("=")[1];
 
+  if (oauthError) {
+    return fail(request, oauthError === "access_denied" ? "github_oauth_denied" : oauthError);
+  }
   if (!code || !state || !cookieState || state !== cookieState) {
     return fail(request, "github_oauth_state_mismatch");
   }
@@ -68,6 +72,8 @@ export async function GET(request: Request) {
       connected_at: new Date().toISOString(),
       account_label: login,
       access_token: encrypted,
+      refresh_token: null,
+      token_expires_at: null,
     });
   }
 

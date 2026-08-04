@@ -23,7 +23,7 @@ export type ClientContactRow = Tables["client_contacts"]["Row"];
 
 export type ExtensionTokenRow = Tables["extension_tokens"]["Row"];
 
-export type NotificationType = "pr-ready" | "needs-human" | "briefing";
+export type NotificationType = "pr-ready" | "needs-human" | "briefing" | "repo-created";
 
 export type NotificationRow = Omit<Tables["notifications"]["Row"], "type"> & {
   type: NotificationType;
@@ -45,7 +45,7 @@ export type RepoRow = Omit<Tables["repos"]["Row"], "provider"> & {
 
 export type MeetingSource = "bot_skribby" | "manual_paste" | "manual_upload";
 export type TranscriptSource = "caption" | "whisper_fallback" | "manual";
-export type MeetingStatus = "scheduled" | "in_progress" | "processing" | "ready" | "failed";
+export type MeetingStatus = "scheduled" | "in_progress" | "processing" | "ready" | "failed" | "dismissed";
 
 export interface DraftTicket {
   title: string;

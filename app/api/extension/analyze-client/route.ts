@@ -43,52 +43,58 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid or revoked extension token." }, { status: 401, headers: cors });
   }
 
-  const payload = (await request.json()) as AnalyzeClientPayload;
-  const { jobUrl, jobTitle, jobDescription, postedBudget, signals } = payload;
+  try {
+    const payload = (await request.json()) as AnalyzeClientPayload;
+    const { jobUrl, jobTitle, jobDescription, postedBudget, signals } = payload;
 
-  const dataHash = createHash("sha256")
-    .update(JSON.stringify({ postedBudget, signals }))
-    .digest("hex");
+    const dataHash = createHash("sha256")
+      .update(JSON.stringify({ postedBudget, signals }))
+      .digest("hex");
 
-  const existing = await findClientByUpworkUrl(supabase, ownerId, jobUrl);
-  if (
-    existing?.last_analyzed_data_hash === dataHash &&
-    existing.last_analyzed_at &&
-    Date.now() - new Date(existing.last_analyzed_at).getTime() < THIRTY_DAYS_MS
-  ) {
-    return NextResponse.json({ client: existing, cached: true }, { headers: cors });
+    const existing = await findClientByUpworkUrl(supabase, ownerId, jobUrl);
+    if (
+      existing?.last_analyzed_data_hash === dataHash &&
+      existing.last_analyzed_at &&
+      Date.now() - new Date(existing.last_analyzed_at).getTime() < THIRTY_DAYS_MS
+    ) {
+      return NextResponse.json({ client: existing, cached: true }, { headers: cors });
+    }
+
+    const { tier, signalsVerified } = computeConfidenceTier(signals);
+
+    const {
+      data: { user },
+    } = await supabase.auth.admin.getUserById(ownerId);
+    const rateHistory = parseRateHistory(user?.user_metadata);
+
+    const analysis = await analyzeClient({
+      jobTitle,
+      jobDescription,
+      postedBudget,
+      tier,
+      signalsVerified,
+      rateHistory,
+    });
+
+    const client = await upsertClientAnalysis(supabase, ownerId, jobUrl, {
+      name: jobTitle,
+      confidence_tier: tier,
+      verdict: analysis.verdict,
+      price_band_min: analysis.priceBand?.min ?? null,
+      price_band_max: analysis.priceBand?.max ?? null,
+      price_band_low_confidence: analysis.priceBand?.low ?? false,
+      hires_count: signals.hiresCount ?? 0,
+      reviews_visible: signals.reviewsVisible,
+      spend_visible: (signals.totalSpentUsd ?? 0) > 0,
+      payment_verified: signals.paymentVerified === true,
+      last_analyzed_data_hash: dataHash,
+      last_analyzed_at: new Date().toISOString(),
+    });
+
+    return NextResponse.json({ client, reasoning: analysis.reasoning, cached: false }, { headers: cors });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Analysis failed.";
+    const isRateLimited = /429|rate.?limit/i.test(message);
+    return NextResponse.json({ error: message }, { status: isRateLimited ? 429 : 500, headers: cors });
   }
-
-  const { tier, signalsVerified } = computeConfidenceTier(signals);
-
-  const {
-    data: { user },
-  } = await supabase.auth.admin.getUserById(ownerId);
-  const rateHistory = parseRateHistory(user?.user_metadata);
-
-  const analysis = await analyzeClient({
-    jobTitle,
-    jobDescription,
-    postedBudget,
-    tier,
-    signalsVerified,
-    rateHistory,
-  });
-
-  const client = await upsertClientAnalysis(supabase, ownerId, jobUrl, {
-    name: jobTitle,
-    confidence_tier: tier,
-    verdict: analysis.verdict,
-    price_band_min: analysis.priceBand?.min ?? null,
-    price_band_max: analysis.priceBand?.max ?? null,
-    price_band_low_confidence: analysis.priceBand?.low ?? false,
-    hires_count: signals.hiresCount ?? 0,
-    reviews_visible: signals.reviewsVisible,
-    spend_visible: (signals.totalSpentUsd ?? 0) > 0,
-    payment_verified: signals.paymentVerified === true,
-    last_analyzed_data_hash: dataHash,
-    last_analyzed_at: new Date().toISOString(),
-  });
-
-  return NextResponse.json({ client, reasoning: analysis.reasoning, cached: false }, { headers: cors });
 }

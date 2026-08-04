@@ -8,9 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { StateChip } from "@/components/state/StateChip";
 import { ConsoleLog, type ConsoleLine } from "@/components/console/ConsoleLog";
 import { CostEstimateModule } from "@/components/epistemic/CostEstimateModule";
-import { getClientById } from "@/mock/clients";
 import { assignAgentToTicket, reassignAgentToTicket, submitPlanDecision, submitReviewDecision } from "@/lib/actions/tickets";
-import type { TicketRow, AgentRunRow } from "@/types/db";
+import type { TicketRow, AgentRunRow, ClientRow } from "@/types/db";
 import type { CostEstimate } from "@/lib/db/agent-runs";
 import styles from "./TicketDetailScreen.module.css";
 
@@ -27,9 +26,10 @@ interface TicketDetailScreenProps {
   runs: AgentRunRow[];
   repoFullName: string | null;
   costEstimate: CostEstimate | null;
+  clients: ClientRow[];
 }
 
-export function TicketDetailScreen({ ticket, runs, repoFullName, costEstimate }: TicketDetailScreenProps) {
+export function TicketDetailScreen({ ticket, runs, repoFullName, costEstimate, clients }: TicketDetailScreenProps) {
   const router = useRouter();
   const [feedback, setFeedback] = useState("");
   const [changesText, setChangesText] = useState("");
@@ -48,7 +48,7 @@ export function TicketDetailScreen({ ticket, runs, repoFullName, costEstimate }:
   }, [ticket.state, router]);
 
   const repo = repoFullName ?? "–";
-  const client = ticket.client_id ? getClientById(ticket.client_id) : undefined;
+  const client = ticket.client_id ? clients.find((c) => c.id === ticket.client_id) : undefined;
   const totalSpentCents = runs.reduce((sum, r) => sum + r.token_cost, 0);
   const currentRun = runs[runs.length - 1];
   const logLines: ConsoleLine[] = (currentRun?.log as unknown as ConsoleLine[]) ?? [];
@@ -287,8 +287,9 @@ export function TicketDetailScreen({ ticket, runs, repoFullName, costEstimate }:
               <Card raised>
                 <div className={styles.cardBlockTitle}>Agent stopped</div>
                 <div className={styles.paragraph}>
-                  The agent tried this ticket {ticket.attempt_count} times and hit the retry cap
-                  without a passing run. No further automatic attempts will run.
+                  {ticket.failure_reason ??
+                    `The agent tried this ticket ${ticket.attempt_count} times and hit the retry cap without a passing run.`}{" "}
+                  No further automatic attempts will run.
                 </div>
                 <div className={styles.formActions} style={{ justifyContent: "flex-start" }}>
                   <Button variant="secondary" onClick={handleReassign} disabled={busy}>

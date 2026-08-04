@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { StateChip } from "@/components/state/StateChip";
+import { RotateCcw } from "lucide-react";
 import { formatRelative } from "@/lib/format";
 import type { TicketRow, RepoRow } from "@/types/db";
 import type { TicketState } from "@/components/state/types";
@@ -156,10 +157,7 @@ export function TicketsBoardScreen({ initialTickets, repos }: TicketsBoardScreen
                   <span className={styles.stateCell}>
                     <StateChip state={t.state} />
                     {t.state === "changes_requested" && (
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--predict)" strokeWidth="2">
-                        <path d="M4 4v5h5M20 20v-5h-5" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M5 15a8 8 0 0 0 14 3l1-3M19 9A8 8 0 0 0 5 6L4 9" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <RotateCcw width={13} height={13} color="var(--predict)" strokeWidth={2} />
                     )}
                   </span>
                   <span className={styles.runs}>

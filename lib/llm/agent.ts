@@ -48,6 +48,7 @@ export async function generatePlan(input: {
     ]
       .filter(Boolean)
       .join("\n\n"),
+    maxRetries: 1,
   });
 
   return { plan: object, costCents: costCents(usage) };
@@ -93,6 +94,7 @@ export async function generateFileChanges(input: {
       `Approved plan: ${input.plan.summary}`,
       `Files to write: ${input.plan.files.map((f) => `${f.path} (${f.note})`).join(", ")}`,
     ].join("\n\n"),
+    maxRetries: 1,
   });
 
   return { ...object, costCents: costCents(usage) };

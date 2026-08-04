@@ -7,23 +7,13 @@ import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { Calendar, Puzzle } from "lucide-react";
+import { GithubMark } from "@/components/icons/GithubMark";
 import { connectRepo, removeRepo, setDefaultRepo, disconnectGithub } from "@/lib/actions/repos";
+import { disconnectGoogleCalendar } from "@/lib/actions/calendar";
 import { generateExtensionToken } from "@/lib/actions/extension-tokens";
 import type { RepoRow, IntegrationRow } from "@/types/db";
 import styles from "./IntegrationsScreen.module.css";
-
-const POLICIES = [
-  {
-    key: "smart",
-    title: "Smart auto-join",
-    desc: "Send a bot automatically only for known clients. All other meetings surface as one-click suggestions.",
-  },
-  {
-    key: "always",
-    title: "Always suggest",
-    desc: "Every detected meeting surfaces as a suggestion, no bots sent without your click.",
-  },
-] as const;
 
 interface IntegrationsScreenProps {
   initialIntegrations: IntegrationRow[];
@@ -41,14 +31,18 @@ export function IntegrationsScreen({
   const router = useRouter();
   const [repos, setRepos] = useState<RepoRow[]>(initialRepos);
   const [repoOptions] = useState<string[]>(initialRepoOptions);
-  const [policy, setPolicy] = useState<"smart" | "always">("smart");
   const githubIntegration = initialIntegrations.find((i) => i.category === "repo" && i.provider === "github");
   const [githubConnected, setGithubConnected] = useState(githubIntegration?.status === "connected");
-  const [calendarConnected, setCalendarConnected] = useState(true);
   const [newRepo, setNewRepo] = useState("");
   const [connecting, setConnecting] = useState(false);
   const availableRepoOptions = repoOptions.filter((name) => !repos.some((r) => r.full_name === name));
   const [toast, setToast] = useState<string | null>(null);
+  const calendarIntegration = initialIntegrations.find(
+    (i) => i.category === "calendar" && i.provider === "google_calendar"
+  );
+  const [calendarConnected, setCalendarConnected] = useState(calendarIntegration?.status === "connected");
+  const [calendarAccountLabel, setCalendarAccountLabel] = useState(calendarIntegration?.account_label ?? null);
+  const [disconnectingCalendar, setDisconnectingCalendar] = useState(false);
   const [extensionConnected, setExtensionConnected] = useState(initialExtensionConnected);
   const [generatingToken, setGeneratingToken] = useState(false);
   const [newToken, setNewToken] = useState<string | null>(null);
@@ -76,9 +70,25 @@ export function IntegrationsScreen({
     const connected = params.get("connected");
     const error = params.get("error");
     if (connected === "github") showToast("GitHub connected.");
-    if (error) showToast(`GitHub connect failed: ${error.replace(/_/g, " ")}`);
+    if (connected === "google_calendar") {
+      showToast("Google Calendar connected.");
+      setCalendarConnected(true);
+    }
+    if (error) showToast(`Connect failed: ${error.replace(/_/g, " ")}`);
     if (connected || error) window.history.replaceState({}, "", window.location.pathname);
   }, []);
+
+  async function handleDisconnectCalendar() {
+    setDisconnectingCalendar(true);
+    try {
+      await disconnectGoogleCalendar();
+      setCalendarConnected(false);
+      setCalendarAccountLabel(null);
+      showToast("Google Calendar disconnected.");
+    } finally {
+      setDisconnectingCalendar(false);
+    }
+  }
 
   async function handleConnectRepo() {
     const fullName = newRepo.trim();
@@ -124,9 +134,7 @@ export function IntegrationsScreen({
 
       <Card style={{ marginBottom: 16 }}>
         <div className={styles.providerRow}>
-          <svg className={styles.providerIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" strokeWidth="1.5">
-            <path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 8v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 6.7 5.4 7 5.4 7a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 13.4c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V25" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <GithubMark className={styles.providerIcon} width={20} height={20} color="var(--ink-2)" />
           <div className={styles.providerName}>GitHub</div>
           <div className={styles.spacer} />
           {githubConnected ? (
@@ -194,10 +202,7 @@ export function IntegrationsScreen({
             {repos.map((r) => (
               <div key={r.id} className={styles.repoRow}>
                 <span className={styles.repoName}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="1.6">
-                    <rect x="3" y="4" width="18" height="16" rx="2" />
-                    <path d="M3 9h18M8 2v4M16 2v4" strokeLinecap="round" />
-                  </svg>
+                  <GithubMark width={14} height={14} color="var(--ink-3)" />
                   <span className={styles.repoNameText}>{r.full_name}</span>
                 </span>
                 <span className={styles.repoBranch}>default</span>
@@ -217,65 +222,34 @@ export function IntegrationsScreen({
 
       <Card style={{ marginBottom: 16 }}>
         <div className={styles.providerRow}>
-          <svg className={styles.providerIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" strokeWidth="1.5">
-            <rect x="3" y="4" width="18" height="17" rx="2" />
-            <path d="M3 9h18M8 2v4M16 2v4" strokeLinecap="round" />
-          </svg>
+          <Calendar className={styles.providerIcon} width={20} height={20} color="var(--ink-2)" strokeWidth={1.5} />
           <div className={styles.providerName}>Google Calendar</div>
           <div className={styles.spacer} />
           {calendarConnected ? (
             <>
               <span className={styles.connectedPill}>● Connected</span>
-              <span className={styles.accountLabel}>jordan@gmail.com</span>
-              <button
-                className={styles.disconnectLink}
-                onClick={() => {
-                  setCalendarConnected(false);
-                  showToast("Google Calendar disconnected.");
-                }}
-              >
-                Disconnect
+              {calendarAccountLabel && <span className={styles.accountLabel}>{calendarAccountLabel}</span>}
+              <button className={styles.disconnectLink} onClick={handleDisconnectCalendar} disabled={disconnectingCalendar}>
+                {disconnectingCalendar ? "Disconnecting…" : "Disconnect"}
               </button>
             </>
           ) : (
-            <Button variant="primary" onClick={() => setCalendarConnected(true)}>
-              Connect Google Calendar
-            </Button>
+            <a href="/api/google-calendar/oauth/start">
+              <Button variant="primary" style={{ height: 32, padding: "0 14px", fontSize: 13 }}>
+                Connect with Google Calendar
+              </Button>
+            </a>
           )}
         </div>
         <div className={styles.subNote}>
-          Skribby Calendar Integration · reads upcoming events with video links · no per-event
-          cost beyond bot usage
-        </div>
-
-        <div className={styles.divider} />
-
-        <div className={styles.subSectionTitle} style={{ marginBottom: 12 }}>
-          Auto-join policy
-        </div>
-        <div className={styles.policyList}>
-          {POLICIES.map((p) => {
-            const selected = policy === p.key;
-            return (
-              <div key={p.key} className={styles.policyOption} onClick={() => setPolicy(p.key)}>
-                {selected && <div className={styles.policyBar} />}
-                <span className={[styles.radio, selected && styles.radioSelected].filter(Boolean).join(" ")} />
-                <div>
-                  <div className={styles.policyTitle}>{p.title}</div>
-                  <div className={styles.policyDesc}>{p.desc}</div>
-                </div>
-              </div>
-            );
-          })}
+          OAuth (scope: calendar.readonly) · events with a video link and a known-client attendee
+          get a bot sent automatically, everything else surfaces as a suggestion on Meetings
         </div>
       </Card>
 
       <Card style={{ marginBottom: 16 }}>
         <div className={styles.providerRow}>
-          <svg className={styles.providerIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" strokeWidth="1.5">
-            <rect x="4" y="3" width="16" height="18" rx="2" />
-            <path d="M9 21v-4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <Puzzle className={styles.providerIcon} width={20} height={20} color="var(--ink-2)" strokeWidth={1.5} />
           <div className={styles.providerName}>Browser extension</div>
           <div className={styles.spacer} />
           {extensionConnected ? (

@@ -54,6 +54,7 @@ export async function connectRepo(fullName: string): Promise<RepoRow> {
     integration_id: integration.id,
     provider: "github",
     full_name: fullName,
+    client_id: null,
     is_default: existingRepos.length === 0,
   });
 }

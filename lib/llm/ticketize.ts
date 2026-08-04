@@ -33,6 +33,7 @@ export async function ticketizeTranscript(transcript: string): Promise<DraftTick
       "and anything that isn't an actual piece of work. If nothing actionable was discussed, return " +
       "an empty list rather than inventing work.",
     prompt: `Meeting transcript:\n\n${transcript}`,
+    maxRetries: 1,
   });
 
   return object.tickets;

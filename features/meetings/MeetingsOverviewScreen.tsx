@@ -6,23 +6,27 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { AddMeetingModal } from "./AddMeetingModal";
-import { getClientById } from "@/mock/clients";
+import { confirmCalendarSuggestion, dismissCalendarSuggestion } from "@/lib/actions/meetings";
 import { formatRelative, formatDateTime } from "@/lib/format";
-import type { MeetingRow } from "@/types/db";
+import type { MeetingRow, ClientRow } from "@/types/db";
 import styles from "./MeetingsOverviewScreen.module.css";
 
 const NOW = new Date("2026-08-02T14:10:00Z");
 
 interface MeetingsOverviewScreenProps {
   initialMeetings: MeetingRow[];
+  clients: ClientRow[];
 }
 
-export function MeetingsOverviewScreen({ initialMeetings }: MeetingsOverviewScreenProps) {
+export function MeetingsOverviewScreen({ initialMeetings, clients }: MeetingsOverviewScreenProps) {
   const router = useRouter();
+  function clientName(clientId: string | null): string | undefined {
+    return clients.find((c) => c.id === clientId)?.name;
+  }
   const [optimistic, setOptimistic] = useState<MeetingRow[]>([]);
-  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [suggestionBusy, setSuggestionBusy] = useState(false);
 
   const meetings = useMemo(
     () => [...optimistic.filter((o) => !initialMeetings.some((m) => m.id === o.id)), ...initialMeetings],
@@ -34,9 +38,7 @@ export function MeetingsOverviewScreen({ initialMeetings }: MeetingsOverviewScre
     setTimeout(() => setToast(null), 2400);
   }
 
-  const suggestion = meetings.find(
-    (m) => m.status === "scheduled" && !m.known_client && !dismissedIds.includes(m.id)
-  );
+  const suggestion = meetings.find((m) => m.status === "scheduled" && !m.known_client && m.google_event_id);
 
   const upcoming = useMemo(
     () => meetings.filter((m) => m.status === "scheduled").sort((a, b) => a.starts_at.localeCompare(b.starts_at)),
@@ -89,26 +91,42 @@ export function MeetingsOverviewScreen({ initialMeetings }: MeetingsOverviewScre
               <div style={{ flex: 1, minWidth: 280 }}>
                 <div className={styles.eyebrow}>● Action needed · Calendar suggestion</div>
                 <div className={styles.cardTitle}>{suggestion.title}</div>
-                <div className={styles.cardMeta}>{formatDateTime(suggestion.starts_at)} · Google Meet</div>
+                <div className={styles.cardMeta}>{formatDateTime(suggestion.starts_at)} · Video call</div>
                 <div className={styles.cardNote}>
-                  Detected from calendar · contact not on file, confirm before a bot is sent
+                  Detected from your Google Calendar · contact not on file, confirm before a bot is sent
                 </div>
               </div>
               <div className={styles.cardActions}>
                 <Button
                   variant="primary"
-                  onClick={() => {
-                    setDismissedIds((ids) => [...ids, suggestion.id]);
-                    showToast(`Bot will join: ${suggestion.title}.`);
+                  disabled={suggestionBusy}
+                  onClick={async () => {
+                    setSuggestionBusy(true);
+                    try {
+                      await confirmCalendarSuggestion(suggestion.id);
+                      showToast(`Bot will join: ${suggestion.title}.`);
+                      router.refresh();
+                    } catch (err) {
+                      showToast(err instanceof Error ? err.message : "Could not send the bot.");
+                    } finally {
+                      setSuggestionBusy(false);
+                    }
                   }}
                 >
                   Confirm &amp; send bot
                 </Button>
                 <Button
                   variant="ghost"
-                  onClick={() => {
-                    setDismissedIds((ids) => [...ids, suggestion.id]);
-                    showToast("Suggestion dismissed.");
+                  disabled={suggestionBusy}
+                  onClick={async () => {
+                    setSuggestionBusy(true);
+                    try {
+                      await dismissCalendarSuggestion(suggestion.id);
+                      showToast("Suggestion dismissed.");
+                      router.refresh();
+                    } finally {
+                      setSuggestionBusy(false);
+                    }
                   }}
                 >
                   Dismiss
@@ -129,7 +147,7 @@ export function MeetingsOverviewScreen({ initialMeetings }: MeetingsOverviewScre
             renderRow={(m) => [
               <span key="title" style={{ color: "var(--ink)" }}>{m.title}</span>,
               <span key="client" style={{ color: m.client_id ? "var(--ink-2)" : "var(--ink-3)" }}>
-                {m.client_id ? getClientById(m.client_id)?.name : "–"}
+                {m.client_id ? clientName(m.client_id) : "–"}
               </span>,
               <span key="when" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-3)" }}>
                 {formatDateTime(m.starts_at)}
@@ -194,7 +212,12 @@ export function MeetingsOverviewScreen({ initialMeetings }: MeetingsOverviewScre
             renderRow={(m) => {
               const transcriptChip =
                 m.status === "failed" ? (
-                  <span className={[styles.statusPill, styles.statusFailed].join(" ")}>Failed to process</span>
+                  <span
+                    className={[styles.statusPill, styles.statusFailed].join(" ")}
+                    title={m.failure_reason ?? "Processing failed for an unknown reason."}
+                  >
+                    Failed to process
+                  </span>
                 ) : m.source === "manual_paste" ? (
                   <span className={[styles.statusPill, styles.statusNeutral].join(" ")}>Manual paste</span>
                 ) : (
@@ -222,7 +245,7 @@ export function MeetingsOverviewScreen({ initialMeetings }: MeetingsOverviewScre
               return [
                 <span key="title" style={{ color: "var(--ink)" }}>{m.title}</span>,
                 <span key="client" style={{ color: m.client_id ? "var(--ink-2)" : "var(--ink-3)" }}>
-                  {m.client_id ? getClientById(m.client_id)?.name : "–"}
+                  {m.client_id ? clientName(m.client_id) : "–"}
                 </span>,
                 <span key="date" style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink-3)" }}>
                   {new Date(m.starts_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
@@ -237,6 +260,7 @@ export function MeetingsOverviewScreen({ initialMeetings }: MeetingsOverviewScre
 
       {modalOpen && (
         <AddMeetingModal
+          clients={clients}
           onClose={() => setModalOpen(false)}
           onCreated={(meeting, msg) => {
             setModalOpen(false);

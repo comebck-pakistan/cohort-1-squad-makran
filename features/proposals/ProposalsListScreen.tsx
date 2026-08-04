@@ -6,10 +6,9 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { StateChip } from "@/components/state/StateChip";
 import { OutcomeCaptureModal } from "./OutcomeCaptureModal";
-import { getClientById } from "@/mock/clients";
 import { formatRelative } from "@/lib/format";
 import { copyAndMarkSent, markProposalOutcome, requestProposalDraft } from "@/lib/actions/proposals";
-import type { ProposalRow } from "@/types/db";
+import type { ProposalRow, ClientRow } from "@/types/db";
 import type { ProposalState } from "@/components/state/types";
 import styles from "./ProposalsListScreen.module.css";
 
@@ -66,9 +65,13 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 
 interface ProposalsListScreenProps {
   initialProposals: ProposalRow[];
+  clients: ClientRow[];
 }
 
-export function ProposalsListScreen({ initialProposals }: ProposalsListScreenProps) {
+export function ProposalsListScreen({ initialProposals, clients }: ProposalsListScreenProps) {
+  function getClientById(id: string): ClientRow | undefined {
+    return clients.find((c) => c.id === id);
+  }
   const [proposals, setProposals] = useState<ProposalRow[]>(initialProposals);
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [outcomeTarget, setOutcomeTarget] = useState<{ proposal: ProposalRow; outcome: "won" | "lost" } | null>(null);
