@@ -149,7 +149,14 @@ Manual transcript upload was the original v1.0 plan, but it undercuts the "OS," 
 ### 4.7 Calendar-Assisted Meeting Detection (Google Calendar)
 Removes the last piece of manual friction in 4.1's primary path: instead of pasting a Zoom/Meet link before every call, the user connects their Google Calendar once, and upcoming meetings are detected automatically.
 
-**Mechanism:** Recall.ai's Calendar Integration API (V1 — simpler, Recall handles more of the scheduling lifecycle; V2 is a future upgrade if per-event bot config is ever needed) connects to the user's Google Calendar via OAuth and reads upcoming events with a conferencing link. This is a genuinely free API from the same vendor already providing the meeting bot — no new vendor, no new per-event cost beyond the same bot-usage fee that already applies when a bot actually joins something.
+**Mechanism (as built, 2026-08-08):** Solvo talks to Google Calendar directly, no calendar vendor in between. Recall.ai's Calendar Integration API was the original plan here, but the meeting bot became Skribby (see 4.1), which has no calendar product, so the middleman was dropped rather than a second vendor added.
+
+- **Auth:** app-owned per-user OAuth 2.0 Authorization Code flow (`app/api/google-calendar/oauth/start|callback`), reusing the same Google Cloud OAuth client as sign-in. `access_type=offline` + `prompt=consent` so a real refresh token comes back, state cookie checked on return, access and refresh tokens stored AES-256-GCM-encrypted in `integrations`. Disconnect revokes at Google, it does not just forget the token locally.
+- **Scopes:** `openid` + `userinfo.email` (label the connected account), `calendar.readonly` (detection and the week grid), `calendar.events` (Solvo creating events, below).
+- **Detection:** polling, not push. `inngest/functions/calendar-sync.ts` runs on a 10-minute cron, plus once immediately for the connecting user on the `calendar/connected` event. It reads the primary calendar's next 24 hours, keeps events that have a video link (`hangoutLink`, else a `conferenceData` video entry point), and drops cancelled, all-day, no-video and self-declined ones. Push notifications were not used: they need a public HTTPS callback and channel renewal, and a 10-minute poll is well inside the useful window for a meeting that has not started yet.
+- **Dedup:** a unique index on `(owner_id, google_event_id)`. A re-sync of an already-seen event updates `starts_at`/`title` if it moved or was renamed and otherwise does nothing; a dismissed suggestion is never resurrected.
+- **In-app week view:** the Meetings screen has a List/Week toggle. Week is a live read-only pull of the whole primary calendar for the shown week (every event, not only the ones with video links), so the user does not leave Solvo to see their schedule. Events already tracked by Solvo are marked as such.
+- **Solvo creates the meeting too:** clicking an empty slot in the week grid opens Add meeting at that day and hour. With the calendar connected, the default path creates the event on the user's real calendar with a Google Meet link attached (`conferenceDataVersion=1`) and optionally invites a guest, then schedules the bot on the generated link. Pasting a link by hand still works and skips event creation. The created event's id is stored on the meeting row, so the sync recognises it rather than detecting it as new and sending a second bot.
 
 **Auto-join policy — "Smart Auto-Join," not blanket automation:**
 - A bot is sent **automatically, no confirmation needed** only when a calendar event's guest list includes an email already on file in `client_contacts` (see below) for an existing client.
@@ -166,6 +173,13 @@ integrations: ... + category enum('repo', 'calendar')   -- lets 'repo' vs 'calen
                                                            -- integrations be queried without 
                                                            -- hardcoding provider names
               provider enum(..., 'google_calendar')      -- new value added to existing enum
+              token_expires_at                           -- drives the silent token refresh
+
+-- as built (20260805030000_google_calendar_integration.sql):
+meetings:     ... + google_event_id, meeting_url        -- unique index on
+                                                           -- (owner_id, google_event_id)
+              status enum(..., 'dismissed')             -- a suggestion the user said no to,
+                                                           -- so a later sync leaves it alone
 ```
 
 ---

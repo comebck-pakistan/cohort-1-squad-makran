@@ -1,11 +1,19 @@
 import { NonRetriableError } from "inngest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { listIntegrations, updateIntegration } from "@/lib/db/integrations";
+import { updateIntegration } from "@/lib/db/integrations";
 import { encryptSecret, decryptSecret } from "@/lib/crypto";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
-const SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
+// openid + email are what userinfo needs to label the card with the connected account.
+// calendar.readonly covers the sync and the week grid; calendar.events is what lets Solvo put a
+// real event (with a real Meet link) on the calendar instead of asking for a pasted link.
+const SCOPE = [
+  "openid",
+  "email",
+  "https://www.googleapis.com/auth/calendar.readonly",
+  "https://www.googleapis.com/auth/calendar.events",
+].join(" ");
 
 function clientId(): string {
   const id = process.env.SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID;
@@ -88,6 +96,19 @@ async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: 
   return { accessToken: data.access_token, expiresInSec: data.expires_in ?? 3600 };
 }
 
+/** Best-effort revoke at Google so a disconnect really ends access, not just forgets the token locally. */
+export async function revokeToken(token: string): Promise<void> {
+  try {
+    await fetch("https://oauth2.googleapis.com/revoke", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token }),
+    });
+  } catch {
+    // Already-invalid or unreachable: the local disconnect below still stands.
+  }
+}
+
 export async function getUserEmail(accessToken: string): Promise<string> {
   const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -103,9 +124,15 @@ export async function getGoogleCalendarAccessToken(
   supabase: SupabaseClient,
   ownerId: string
 ): Promise<string | null> {
-  const integration = (await listIntegrations(supabase)).find(
-    (i) => i.owner_id === ownerId && i.category === "calendar" && i.provider === "google_calendar" && i.status === "connected"
-  );
+  const { data: integration, error } = await supabase
+    .from("integrations")
+    .select("*")
+    .eq("owner_id", ownerId)
+    .eq("category", "calendar")
+    .eq("provider", "google_calendar")
+    .eq("status", "connected")
+    .maybeSingle();
+  if (error) throw error;
   if (!integration?.access_token) return null;
 
   const expiresAt = integration.token_expires_at ? new Date(integration.token_expires_at).getTime() : 0;
@@ -124,6 +151,63 @@ export async function getGoogleCalendarAccessToken(
   return refreshed.accessToken;
 }
 
+export interface CreatedEvent {
+  googleEventId: string;
+  videoLink: string | null;
+  htmlLink: string | null;
+}
+
+/**
+ * Creates a real event on the user's primary calendar, with a Google Meet link attached, so the
+ * user never has to leave Solvo to set up a call. Requires the `calendar.events` scope.
+ */
+export async function createCalendarEvent(
+  accessToken: string,
+  input: {
+    title: string;
+    startsAtISO: string;
+    endsAtISO: string;
+    attendeeEmails?: string[];
+    description?: string;
+    requestId: string;
+  }
+): Promise<CreatedEvent> {
+  const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+  // Version 1 is what makes Google actually mint the Meet link instead of ignoring conferenceData.
+  url.searchParams.set("conferenceDataVersion", "1");
+  if (input.attendeeEmails?.length) url.searchParams.set("sendUpdates", "all");
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      summary: input.title,
+      description: input.description,
+      start: { dateTime: input.startsAtISO },
+      end: { dateTime: input.endsAtISO },
+      attendees: (input.attendeeEmails ?? []).map((email) => ({ email })),
+      conferenceData: {
+        createRequest: {
+          requestId: input.requestId,
+          conferenceSolutionKey: { type: "hangoutsMeet" },
+        },
+      },
+    }),
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    throw new Error("google_calendar_write_denied: reconnect Google Calendar to grant event access.");
+  }
+  if (!res.ok) throw new Error(`google_calendar_create_failed: ${res.status} ${await res.text()}`);
+
+  const created = (await res.json()) as GoogleEvent & { htmlLink?: string };
+  return {
+    googleEventId: created.id,
+    videoLink: videoLinkOf(created),
+    htmlLink: created.htmlLink ?? null,
+  };
+}
+
 export interface DetectedEvent {
   googleEventId: string;
   title: string;
@@ -136,10 +220,80 @@ interface GoogleEvent {
   id: string;
   status: string;
   summary?: string;
-  start?: { dateTime?: string };
+  start?: { dateTime?: string; date?: string };
+  end?: { dateTime?: string; date?: string };
   hangoutLink?: string;
+  location?: string;
   conferenceData?: { entryPoints?: { entryPointType: string; uri: string }[] };
   attendees?: { email: string; self?: boolean; responseStatus?: string }[];
+}
+
+async function fetchRawEvents(
+  accessToken: string,
+  range: { timeMinISO: string; timeMaxISO: string },
+  maxResults: number
+): Promise<GoogleEvent[]> {
+  const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+  url.searchParams.set("timeMin", range.timeMinISO);
+  url.searchParams.set("timeMax", range.timeMaxISO);
+  url.searchParams.set("singleEvents", "true");
+  url.searchParams.set("orderBy", "startTime");
+  url.searchParams.set("maxResults", String(maxResults));
+
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (res.status === 401) throw new NonRetriableError("google_auth_failed: calendar token rejected.");
+  if (!res.ok) throw new Error(`google_calendar_list_failed: ${res.status} ${await res.text()}`);
+
+  const data = (await res.json()) as { items?: GoogleEvent[] };
+  return data.items ?? [];
+}
+
+/** One entry per calendar event in the range, video call or not: this is what the week grid draws. */
+export interface CalendarEntry {
+  googleEventId: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  allDay: boolean;
+  videoLink: string | null;
+  location: string | null;
+  attendeeEmails: string[];
+  declined: boolean;
+}
+
+/** Everything on the primary calendar between two instants, for display only. */
+export async function listCalendarEntries(
+  accessToken: string,
+  range: { timeMinISO: string; timeMaxISO: string }
+): Promise<CalendarEntry[]> {
+  const items = await fetchRawEvents(accessToken, range, 250);
+  const entries: CalendarEntry[] = [];
+
+  for (const event of items) {
+    if (event.status === "cancelled") continue;
+    const startsAt = event.start?.dateTime ?? event.start?.date;
+    if (!startsAt) continue;
+    const allDay = !event.start?.dateTime;
+    // Google omits end on rare malformed events. An hour is a sane fallback for a drawn block.
+    const endsAt =
+      event.end?.dateTime ??
+      event.end?.date ??
+      new Date(new Date(startsAt).getTime() + 60 * 60 * 1000).toISOString();
+    const self = event.attendees?.find((a) => a.self);
+
+    entries.push({
+      googleEventId: event.id,
+      title: event.summary ?? "Untitled event",
+      startsAt,
+      endsAt,
+      allDay,
+      videoLink: videoLinkOf(event),
+      location: event.location ?? null,
+      attendeeEmails: (event.attendees ?? []).filter((a) => !a.self).map((a) => a.email),
+      declined: self?.responseStatus === "declined",
+    });
+  }
+  return entries;
 }
 
 function videoLinkOf(event: GoogleEvent): string | null {
@@ -152,20 +306,9 @@ export async function listUpcomingEvents(
   accessToken: string,
   range: { timeMinISO: string; timeMaxISO: string }
 ): Promise<DetectedEvent[]> {
-  const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
-  url.searchParams.set("timeMin", range.timeMinISO);
-  url.searchParams.set("timeMax", range.timeMaxISO);
-  url.searchParams.set("singleEvents", "true");
-  url.searchParams.set("orderBy", "startTime");
-  url.searchParams.set("maxResults", "50");
-
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (res.status === 401) throw new NonRetriableError("google_auth_failed: calendar token rejected.");
-  if (!res.ok) throw new Error(`google_calendar_list_failed: ${res.status} ${await res.text()}`);
-
-  const data = (await res.json()) as { items?: GoogleEvent[] };
+  const items = await fetchRawEvents(accessToken, range, 50);
   const events: DetectedEvent[] = [];
-  for (const event of data.items ?? []) {
+  for (const event of items) {
     if (event.status === "cancelled") continue;
     if (!event.start?.dateTime) continue;
     const self = event.attendees?.find((a) => a.self);

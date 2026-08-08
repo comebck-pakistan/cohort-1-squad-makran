@@ -57,10 +57,19 @@ INTEGRATION_TOKEN_ENCRYPTION_KEY=
 # SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID/SECRET above rather than a second OAuth app,
 # since a single Google Cloud OAuth client supports multiple redirect URIs and scopes.
 # On console.cloud.google.com, on that same OAuth client: (1) enable the "Google Calendar
-# API", (2) add scope https://www.googleapis.com/auth/calendar.readonly to the OAuth
-# consent screen, (3) add redirect URI http://localhost:3000/api/google-calendar/oauth/callback,
-# (4) if the consent screen is in "Testing" status, confirm the account is a test user
-# (already required for sign-in to work). No new env vars needed.
+# API", (2) add four scopes under Data Access:
+#       openid
+#       https://www.googleapis.com/auth/userinfo.email      (labels the card with the account)
+#       https://www.googleapis.com/auth/calendar.readonly   (sync + the week grid)
+#       https://www.googleapis.com/auth/calendar.events     (Solvo creating the event + Meet link)
+#     the last two are "sensitive" scopes, the first two are not,
+# (3) add redirect URI http://localhost:3000/api/google-calendar/oauth/callback
+#     (register the 127.0.0.1 spelling too if NEXT_PUBLIC_APP_URL uses it: Google matches the
+#     string exactly, and localhost and 127.0.0.1 are different strings to it),
+# (4) if the consent screen is in "Testing" status, add the account under Audience -> Test users
+#     (an account that is not listed gets "Error 403: access_denied" after picking it).
+# No new env vars needed. Changing the scope list means existing users must disconnect and
+# reconnect: a grant issued before a scope was added does not gain it silently.
 ```
 
 Until Google/GitHub client id + secret are filled in, those two sign-in buttons will error at redirect. OTP email sign-in works with none of this filled in beyond the Supabase URL/anon key, since local dev catches OTP emails at `http://127.0.0.1:54324` (Mailpit) instead of sending them.
@@ -71,7 +80,7 @@ docker restart supabase_auth_cohort-1-squad-makran
 ```
 Known CLI bug ([supabase/cli#4668](https://github.com/supabase/cli/issues/4668)): the auth container races Kong on startup and tries to fetch our custom OTP email template (`supabase/templates/magic_link.html`) before Kong has actually created it, so it silently fails and every sign-in/sign-up email comes through as a bare "click this link" with no visible code, useless against the app's 6-digit code input. Restarting auth once things are up makes it retry the fetch successfully. Google/GitHub OAuth are unaffected by this, only OTP email.
 
-The Supabase CLI does not read `.env.local` either (see below) — always run `set -a; source .env.local; set +a;` before `npx supabase start`/`stop`, or the Google/GitHub client id/secret resolve to the literal string `env(...)` and those buttons fail.
+The Supabase CLI does not read `.env.local` either (see below), so always run `set -a; source .env.local; set +a;` before `npx supabase start`/`stop`, or the Google/GitHub client id/secret resolve to the literal string `env(...)` and those buttons fail.
 
 `.claude/launch.json` also inlines `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` so the dev server works out of the box for the preview browser tool, no `.env.local` required. That anon key is Supabase's fixed local-dev demo JWT (same on every machine, derived from the fixed local `JWT_SECRET` in `supabase/config.toml`), not a real secret. Once `.env.local` exists it takes precedence for anything not covered by launch.json's inline vars (Google/GitHub OAuth creds).
 

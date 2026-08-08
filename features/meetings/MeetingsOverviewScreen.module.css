@@ -169,3 +169,37 @@
   font-size: 13px;
   color: var(--predict);
 }
+
+.viewToggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.viewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: var(--panel);
+  color: var(--ink-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.viewBtn + .viewBtn {
+  border-left: 1px solid var(--border);
+}
+
+.viewBtn:hover {
+  color: var(--ink);
+}
+
+.viewBtnOn {
+  background: var(--predict-tint);
+  color: var(--predict);
+  font-weight: 500;
+}

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Search } from "lucide-react";
+import { CalendarPlus, Search, Video } from "lucide-react";
 import { scheduleBotMeeting, createManualMeeting } from "@/lib/actions/meetings";
+import { createGoogleCalendarEvent, isGoogleCalendarConnected } from "@/lib/actions/calendar";
 import type { MeetingRow, ClientRow } from "@/types/db";
 import styles from "./AddMeetingModal.module.css";
 
@@ -12,22 +13,61 @@ interface AddMeetingModalProps {
   clients: ClientRow[];
   onClose: () => void;
   onCreated: (meeting: MeetingRow, message: string) => void;
+  /** Pre-filled start, used when the modal is opened by clicking a slot in the week grid. */
+  initialStart?: Date;
 }
 
 type Mode = "bot" | "manual";
 
-export function AddMeetingModal({ clients, onClose, onCreated }: AddMeetingModalProps) {
+/** Local (not UTC) values for the native date and time inputs. */
+function dateInputValue(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function timeInputValue(date: Date): string {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+/** Next full hour, so the default is always a sane future slot rather than a fixed date. */
+function nextHour(): Date {
+  const start = new Date();
+  start.setMinutes(0, 0, 0);
+  start.setHours(start.getHours() + 1);
+  return start;
+}
+
+export function AddMeetingModal({ clients, onClose, onCreated, initialStart }: AddMeetingModalProps) {
+  const [defaultStart] = useState(() => initialStart ?? nextHour());
   const [mode, setMode] = useState<Mode>("bot");
   const [title, setTitle] = useState("");
   const [meetingLink, setMeetingLink] = useState("");
   const [transcript, setTranscript] = useState("");
   const [clientQuery, setClientQuery] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [dateVal, setDateVal] = useState("2026-08-05");
-  const [timeVal, setTimeVal] = useState("10:00");
+  const [dateVal, setDateVal] = useState(() => dateInputValue(defaultStart));
+  const [timeVal, setTimeVal] = useState(() => timeInputValue(defaultStart));
   const [joinNowMode, setJoinNowMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  // Default on once we know the calendar is connected: creating the event is the frictionless path.
+  const [createInCalendar, setCreateInCalendar] = useState(false);
+  const [durationMinutes, setDurationMinutes] = useState(30);
+  const [inviteEmail, setInviteEmail] = useState("");
+
+  useEffect(() => {
+    let live = true;
+    void isGoogleCalendarConnected().then((connected) => {
+      if (!live) return;
+      setCalendarConnected(connected);
+      setCreateInCalendar(connected);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const willCreateEvent = mode === "bot" && calendarConnected && createInCalendar && !joinNowMode;
 
   const clientMatches =
     clientQuery.trim() && !selectedClientId
@@ -97,20 +137,48 @@ export function AddMeetingModal({ clients, onClose, onCreated }: AddMeetingModal
     setError(null);
     try {
       if (mode === "bot") {
-        if (!meetingLink.trim()) {
-          setError("Add a meeting link before scheduling the bot.");
+        if (!willCreateEvent && !meetingLink.trim()) {
+          setError("Add a meeting link, or let Solvo create the event and generate one.");
           setSubmitting(false);
           return;
         }
         const startsAt = joinNowMode ? new Date().toISOString() : new Date(`${dateVal}T${timeVal}`).toISOString();
+
+        let meetingUrl = meetingLink.trim();
+        let googleEventId: string | null = null;
+
+        if (willCreateEvent && !meetingUrl) {
+          const created = await createGoogleCalendarEvent({
+            title: title.trim(),
+            startsAtISO: startsAt,
+            durationMinutes,
+            attendeeEmails: inviteEmail.trim() ? [inviteEmail.trim()] : [],
+          });
+          if (!created.videoLink) {
+            setError("Google created the event but returned no Meet link. Paste a link instead.");
+            setSubmitting(false);
+            return;
+          }
+          meetingUrl = created.videoLink;
+          googleEventId = created.googleEventId;
+        }
+
         const meeting = await scheduleBotMeeting({
           title: title.trim(),
-          meetingUrl: meetingLink.trim(),
+          meetingUrl,
           clientId: selectedClientId,
-          guestEmail: null,
+          guestEmail: inviteEmail.trim() || null,
           startsAt,
+          googleEventId,
         });
-        onCreated(meeting, joinNowMode ? "Bot joining now." : `Bot scheduled for ${dateVal} at ${timeVal}.`);
+        onCreated(
+          meeting,
+          joinNowMode
+            ? "Bot joining now."
+            : googleEventId
+              ? `Event created on your calendar, bot scheduled for ${dateVal} at ${timeVal}.`
+              : `Bot scheduled for ${dateVal} at ${timeVal}.`
+        );
       } else {
         if (!transcript.trim()) {
           setError("Paste the transcript text before continuing.");
@@ -125,8 +193,18 @@ export function AddMeetingModal({ clients, onClose, onCreated }: AddMeetingModal
         });
         onCreated(meeting, "Transcript received, drafting tickets.");
       }
-    } catch {
-      setError(mode === "bot" ? "Could not schedule the bot. Check Skribby is configured." : "Could not process the transcript.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message.startsWith("google_calendar_write_denied")) {
+        // The stored grant predates the write scope, so reconnecting is the actual fix.
+        setError("Solvo cannot write to your calendar yet. Reconnect Google Calendar in Settings → Integrations.");
+      } else if (message.startsWith("google_calendar_create_failed")) {
+        setError("Google would not create the event. Paste a meeting link instead, or try again.");
+      } else {
+        setError(
+          mode === "bot" ? "Could not schedule the bot. Check Skribby is configured." : "Could not process the transcript."
+        );
+      }
       setSubmitting(false);
     }
   }
@@ -159,15 +237,59 @@ export function AddMeetingModal({ clients, onClose, onCreated }: AddMeetingModal
 
           {mode === "bot" ? (
             <>
+              {calendarConnected && !joinNowMode && (
+                <div className={styles.field}>
+                  <label className={styles.optionRow}>
+                    <input
+                      type="checkbox"
+                      checked={createInCalendar}
+                      onChange={(e) => setCreateInCalendar(e.target.checked)}
+                    />
+                    <CalendarPlus width={15} height={15} strokeWidth={1.8} />
+                    <span>
+                      Create this on my Google Calendar
+                      <span className={styles.optionNote}>Solvo generates the Meet link and invites the guest.</span>
+                    </span>
+                  </label>
+                </div>
+              )}
+
               <div className={styles.field}>
-                <div className={styles.fieldLabel}>Meeting link</div>
+                <div className={styles.fieldLabel}>
+                  Meeting link {willCreateEvent && <span className={styles.fieldOptional}>(optional)</span>}
+                </div>
                 <Input
-                  placeholder="Paste a Zoom or Google Meet link"
+                  placeholder={willCreateEvent ? "Leave empty to generate a Meet link" : "Paste a Zoom or Google Meet link"}
                   value={meetingLink}
                   onChange={(e) => setMeetingLink(e.target.value)}
                 />
-                <div className={styles.fieldHint}>The bot joins using only this link, no Zoom or Google account needed.</div>
+                <div className={[styles.fieldHint, styles.hintWithIcon].join(" ")}>
+                  {willCreateEvent && !meetingLink.trim() ? (
+                    <>
+                      <Video width={12} height={12} strokeWidth={1.8} /> A Google Meet link is created with the event.
+                      Paste your own link here to use that instead.
+                    </>
+                  ) : (
+                    "The bot joins using only this link, no Zoom or Google account needed."
+                  )}
+                </div>
               </div>
+
+              {willCreateEvent && (
+                <div className={styles.field}>
+                  <div className={styles.fieldLabel}>
+                    Invite <span className={styles.fieldOptional}>(optional)</span>
+                  </div>
+                  <Input
+                    placeholder="guest@company.com"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                  />
+                  <div className={styles.fieldHint}>
+                    Google emails them the invite. A match on file for a client also links this meeting to them.
+                  </div>
+                </div>
+              )}
 
               {clientPickerField()}
 
@@ -175,7 +297,7 @@ export function AddMeetingModal({ clients, onClose, onCreated }: AddMeetingModal
                 <div className={styles.fieldLabel}>When</div>
                 {!joinNowMode ? (
                   <>
-                    <div className={styles.whenGrid}>
+                    <div className={[styles.whenGrid, willCreateEvent ? styles.whenGridWide : ""].join(" ")}>
                       <input
                         type="date"
                         className={styles.plainInput}
@@ -188,6 +310,20 @@ export function AddMeetingModal({ clients, onClose, onCreated }: AddMeetingModal
                         value={timeVal}
                         onChange={(e) => setTimeVal(e.target.value)}
                       />
+                      {willCreateEvent && (
+                        <select
+                          className={styles.plainInput}
+                          value={durationMinutes}
+                          onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                          aria-label="Duration"
+                        >
+                          <option value={15}>15 min</option>
+                          <option value={30}>30 min</option>
+                          <option value={45}>45 min</option>
+                          <option value={60}>1 hour</option>
+                          <option value={90}>1.5 hours</option>
+                        </select>
+                      )}
                     </div>
                     <div style={{ marginTop: 10 }}>
                       <Button variant="secondary" onClick={() => setJoinNowMode(true)} className={styles.joinNowToggle}>
@@ -237,7 +373,13 @@ export function AddMeetingModal({ clients, onClose, onCreated }: AddMeetingModal
               Cancel
             </Button>
             <Button variant="primary" onClick={submit} disabled={submitting}>
-              {submitting ? "Working…" : mode === "bot" ? "Schedule bot" : "Process transcript"}
+              {submitting
+                ? "Working…"
+                : mode === "manual"
+                  ? "Process transcript"
+                  : willCreateEvent && !meetingLink.trim()
+                    ? "Create event & schedule bot"
+                    : "Schedule bot"}
             </Button>
           </div>
         </div>
