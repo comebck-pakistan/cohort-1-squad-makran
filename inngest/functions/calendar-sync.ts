@@ -57,15 +57,28 @@ export const calendarSync = inngest.createFunction(
       );
 
       for (const evt of events) {
-        const result = await step.run(`sync-event-${ownerId}-${evt.googleEventId}`, async () => {
+        // Resolve first, in its own step: a retry of the insert below must not create a second bot.
+        const resolved = await step.run(`resolve-event-${ownerId}-${evt.googleEventId}`, async () => {
           const { data: existing, error: existingError } = await supabase
             .from("meetings")
-            .select("id")
+            .select("id, starts_at, title, status")
             .eq("owner_id", ownerId)
             .eq("google_event_id", evt.googleEventId)
             .maybeSingle();
           if (existingError) throw existingError;
-          if (existing) return { created: false };
+
+          if (existing) {
+            // Event moved or was renamed in Calendar after we first synced it. Dismissed
+            // suggestions stay dismissed, the user already said no to this one.
+            const changed = existing.starts_at !== evt.startsAt || existing.title !== evt.title;
+            if (changed && existing.status === "scheduled") {
+              await supabase
+                .from("meetings")
+                .update({ starts_at: evt.startsAt, title: evt.title })
+                .eq("id", existing.id);
+            }
+            return { skip: true as const };
+          }
 
           let clientId: string | null = null;
           if (evt.attendeeEmails.length > 0) {
@@ -77,14 +90,21 @@ export const calendarSync = inngest.createFunction(
             if (contactError) throw contactError;
             clientId = contacts[0]?.client_id ?? null;
           }
-          const knownClient = clientId !== null;
+          return { skip: false as const, clientId, knownClient: clientId !== null };
+        });
 
-          let skribbyBotId: string | null = null;
-          if (knownClient) {
-            const bot = await createSkribbyBot({ meetingUrl: evt.videoLink });
-            skribbyBotId = bot.id;
-          }
+        if (resolved.skip) continue;
+        const { clientId, knownClient } = resolved;
 
+        // Known client: the bot goes out with no confirmation (docs/features.md §4.7). Unknown
+        // contact: no bot yet, the Meetings screen's suggestion card sends it on confirm.
+        const skribbyBotId = knownClient
+          ? (await step.run(`create-bot-${ownerId}-${evt.googleEventId}`, () =>
+              createSkribbyBot({ meetingUrl: evt.videoLink })
+            )).id
+          : null;
+
+        const result = await step.run(`create-meeting-${ownerId}-${evt.googleEventId}`, async () => {
           const meeting = await createMeeting(supabase, {
             owner_id: ownerId,
             client_id: clientId,

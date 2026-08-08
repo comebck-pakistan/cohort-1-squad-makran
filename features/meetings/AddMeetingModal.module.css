@@ -271,3 +271,33 @@
   align-items: center;
   justify-content: space-between;
 }
+
+.whenGridWide {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.optionRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  background: var(--panel-2, rgba(127, 127, 127, 0.06));
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+}
+
+.optionNote {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.hintWithIcon {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}

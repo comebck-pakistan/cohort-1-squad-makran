@@ -31,6 +31,9 @@ export interface ScheduleBotMeetingInput {
   clientId: string | null;
   guestEmail: string | null;
   startsAt: string;
+  /** Set when Solvo created the Google Calendar event itself, so `calendar-sync` dedupes on it
+   * instead of treating the same event as new and sending a second bot. */
+  googleEventId?: string | null;
 }
 
 /** Skribby bot-join path. Requires SKRIBBY_API_KEY, real Skribby account. */
@@ -59,7 +62,7 @@ export async function scheduleBotMeeting(input: ScheduleBotMeetingInput): Promis
     known_client: knownClient,
     guest_email: input.guestEmail,
     transcript_text: null,
-    google_event_id: null,
+    google_event_id: input.googleEventId ?? null,
     meeting_url: input.meetingUrl,
   });
 

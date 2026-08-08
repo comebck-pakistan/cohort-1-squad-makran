@@ -44,27 +44,48 @@ export async function GET(request: Request) {
     return fail(request, "google_no_refresh_token");
   }
 
-  const email = await getUserEmail(tokens.accessToken);
+  // The label is cosmetic. A userinfo hiccup must not throw away a working calendar grant.
+  let email = user.email ?? "Google Calendar";
+  try {
+    email = await getUserEmail(tokens.accessToken);
+  } catch {
+    // Keep the signed-in email as the label.
+  }
   const expiresAt = new Date(Date.now() + tokens.expiresInSec * 1000).toISOString();
 
-  const existing = (await listIntegrations(supabase)).find(
-    (i) => i.category === "calendar" && i.provider === "google_calendar"
-  );
-  const patch = {
-    status: "connected" as const,
-    connected_at: new Date().toISOString(),
-    account_label: email,
-    access_token: encryptSecret(tokens.accessToken),
-    refresh_token: encryptSecret(tokens.refreshToken),
-    token_expires_at: expiresAt,
-  };
-  if (existing) {
-    await updateIntegration(supabase, existing.id, patch);
-  } else {
-    await createIntegration(supabase, { owner_id: user.id, category: "calendar", provider: "google_calendar", ...patch });
+  try {
+    const existing = (await listIntegrations(supabase)).find(
+      (i) => i.category === "calendar" && i.provider === "google_calendar"
+    );
+    const patch = {
+      status: "connected" as const,
+      connected_at: new Date().toISOString(),
+      account_label: email,
+      access_token: encryptSecret(tokens.accessToken),
+      refresh_token: encryptSecret(tokens.refreshToken),
+      token_expires_at: expiresAt,
+    };
+    if (existing) {
+      await updateIntegration(supabase, existing.id, patch);
+    } else {
+      await createIntegration(supabase, {
+        owner_id: user.id,
+        category: "calendar",
+        provider: "google_calendar",
+        ...patch,
+      });
+    }
+  } catch (err) {
+    console.error("[google-calendar/callback] storing the integration failed", err);
+    return fail(request, "google_calendar_store_failed");
   }
 
-  await inngest.send({ name: "calendar/connected", data: { ownerId: user.id } });
+  try {
+    await inngest.send({ name: "calendar/connected", data: { ownerId: user.id } });
+  } catch (err) {
+    // The calendar is connected either way. The 10-minute cron picks it up on its own.
+    console.error("[google-calendar/callback] could not queue the first sync", err);
+  }
 
   const response = NextResponse.redirect(new URL("/settings/integrations?connected=google_calendar", request.url));
   response.cookies.set("google_calendar_oauth_state", "", { maxAge: 0, path: "/" });

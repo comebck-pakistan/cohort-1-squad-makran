@@ -44,7 +44,7 @@ Building "Solvo for Freelancers" — a two-surface product (Next.js web app + Ch
 - **owner_id not user_id** on every table — allows future workspace concept without migration
 - **OAuth (not GitHub App)** for GitHub integration — simpler, tradeoff accepted: broad repo scope, PRs appear under user's account. Mitigation: git commit author set to `Solvo Agent <agent@solvo.dev>`
 - **Recall.ai** for meeting bot (not Skribby, not self-hosted Attendee) — native caption transcription removes per-minute AI transcription cost, only bot-usage fee applies
-- **Recall.ai Calendar Integration V1** (not V2) — simpler, Recall handles scheduling lifecycle
+- ~~**Recall.ai Calendar Integration V1** (not V2) — simpler, Recall handles scheduling lifecycle~~ **Superseded (2026-08-08):** the bot became Skribby, which has no calendar product, so calendar work talks to Google directly instead of adding a second vendor: app-owned per-user Google OAuth, a 10-minute Inngest poll of the primary calendar, dedup on a unique `(owner_id, google_event_id)`, and the `calendar.events` scope so Solvo can create the event and its Meet link itself. See features.md 4.7.
 - **pgvector inside Supabase** instead of Qdrant — eliminates a separate service, same result for proposal embedding similarity search
 - **No proposal voice feedback loop in v1.0** — avoids echo-chamber/voice-drift risk, revisit post-v1.0
 - **No auto-bidding ever** — ToS + financial risk, roadmap-only
